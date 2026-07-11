@@ -65,6 +65,44 @@ utm_medium   = {{adset.id}}--{{adset.name}}
 evento deve ser reaproveitado pelo pixel do navegador (quando houver) para
 deduplicação client/server na Meta.
 
+### Tracking (Sprint 2)
+
+- `public/track.js`: script vanilla (sem dependências, fora do bundle
+  TypeScript — ignorado pelo ESLint do projeto). Gera/recupera o
+  `visitor_id`, captura UTMs/fbclid da URL, gera `_fbp`/`_fbc` compatíveis
+  com o formato da Meta quando o pixel do navegador não está presente,
+  reescreve links de checkout Hotmart (`sck` + `src`) tanto no load quanto
+  via `MutationObserver` e delegação de clique, dispara `PageView`
+  automático (+ `Scroll50`/`Scroll90` e `PageDuration` no unload) e expõe
+  `window.trk(eventName, customData)` / `window.trk.lastEventId`. Envia via
+  `navigator.sendBeacon` (fallback `fetch(..., keepalive: true)`); nunca
+  lança exceção que quebre a página de vendas.
+- `app/api/track/route.ts`: valida o payload (Zod), resolve a oferta pelo
+  `offer_slug`, faz upsert de `visitor` (first-touch preservado — só
+  atualiza `last_seen_at` e completa `fbp`/`fbc`/`ga_client_id` se
+  estavam vazios) e insere o `event`. Responde rápido e processa o envio
+  para Meta CAPI + GA4 MP depois, via `after()` do `next/server`, sem
+  atrasar o beacon do navegador. Atualiza `events.meta_status` /
+  `meta_response` / `ga4_status` ao final.
+- `lib/meta/capi.ts` / `lib/ga4/measurement-protocol.ts`: montam e enviam
+  os eventos (1 retry com backoff via `lib/utils/fetch-retry.ts`). `email`/
+  `phone` do `custom_data` viram `em`/`ph` hasheados em SHA-256 no
+  `user_data` da Meta (`lib/crypto/hash.ts`) e são removidos do
+  `custom_data`/params antes de repassar a GA4 (nunca PII em texto puro
+  fora do `user_data`).
+- `test_event_code`: por convenção de env var, sem precisar de coluna no
+  banco — `META_TEST_EVENT_CODE_<SLUG-EM-MAIÚSCULAS-COM-UNDERSCORE>` (ver
+  `lib/meta/capi.ts#metaTestEventCodeEnvName`).
+- Geo (cidade/estado/país) é lida dos headers `x-vercel-ip-*`, presentes
+  automaticamente em produção na Vercel; localmente ficam vazios (não é um
+  serviço de geo-IP à parte).
+- CORS de `/api/track` é resolvido por `lib/cors.ts` comparando a `Origin`
+  do request com `offers.domain`; permissivo enquanto a oferta não tem
+  domínio cadastrado.
+- Rate limit (`lib/rate-limit.ts`) é em memória, por IP, por processo —
+  suficiente como proteção básica; não é distribuído entre instâncias
+  serverless (upgrade futuro: Upstash Redis, se o tráfego justificar).
+
 ## Schema do banco
 
 Migrations versionadas em `supabase/migrations/`. `0001_init.sql` cria:
@@ -126,7 +164,7 @@ npm run lint
 
 1. **✅ Sprint 1 — Fundação:** Next.js + Tailwind + shadcn, migrations
    completas, auth do painel, CRUD de ofertas, shell do dashboard.
-2. **Sprint 2 — Tracking:** `public/track.js` + `/api/track` + envio Meta
+2. **✅ Sprint 2 — Tracking:** `public/track.js` + `/api/track` + envio Meta
    CAPI/GA4 com dedup e hashing SHA-256 + vinculador `sck` + validação com
    `test_event_code`.
 3. **Sprint 3 — Hotmart:** `/api/webhooks/hotmart` completo, casamento

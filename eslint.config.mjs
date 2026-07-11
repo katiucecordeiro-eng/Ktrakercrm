@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Script vanilla para o browser, fora do bundle TypeScript do app.
+    "public/track.js",
   ]),
 ]);
 

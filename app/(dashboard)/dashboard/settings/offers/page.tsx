@@ -15,6 +15,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Offer } from "@/lib/types/offer";
 import { OfferFormDialog } from "./offer-form-dialog";
+import { InstallSnippetDialog } from "./install-snippet-dialog";
 
 async function getOffers(): Promise<Offer[]> {
   if (!isSupabaseConfigured()) return [];
@@ -90,7 +91,8 @@ export default async function OffersPage() {
                         {offer.active ? "Ativa" : "Inativa"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="flex justify-end gap-2 text-right">
+                      <InstallSnippetDialog slug={offer.slug} />
                       <OfferFormDialog
                         offer={offer}
                         trigger={
@@ -107,7 +109,7 @@ export default async function OffersPage() {
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">
               Cadastre sua primeira oferta para liberar o snippet de instalação
-              do <code className="font-mono-nums">track.js</code> (Sprint 2).
+              do <code className="font-mono-nums">track.js</code>.
             </p>
           )}
         </CardContent>

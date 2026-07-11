@@ -47,6 +47,18 @@ Arquitetura, convenções e roadmap completo estão em [`CLAUDE.md`](./CLAUDE.md
 5. Crie seu usuário de acesso ao painel em Authentication → Users no painel
    do Supabase (e-mail + senha) — é esse usuário que faz login em `/login`.
 
+## Instalar o tracking numa página de vendas
+
+1. Cadastre a oferta em `/dashboard/settings/offers` (nome, slug, domínio,
+   Pixel Meta, GA4).
+2. Clique em "Snippet" na linha da oferta, copie o `<script>` e cole antes
+   do fechamento de `</body>` na página de vendas.
+3. Links de checkout Hotmart na página são reescritos automaticamente com
+   `sck`/`src`. Para eventos manuais (ex. clique em "Comprar" customizado),
+   use `window.trk('AddToCart', { value: 97, currency: 'BRL' })` no `onclick`.
+4. Para validar no Gerenciador de Eventos da Meta, defina
+   `META_TEST_EVENT_CODE_<SLUG>` no `.env.local`/Vercel (veja `.env.example`).
+
 ## Deploy (Vercel)
 
 1. Importe o repositório em [vercel.com/new](https://vercel.com/new).
@@ -67,4 +79,5 @@ npm run lint    # eslint
 ## Status do projeto
 
 Ver roadmap de sprints em [`CLAUDE.md`](./CLAUDE.md#roadmap-de-sprints).
-Sprint 1 (fundação) concluída — as demais seguem sprint a sprint.
+Sprints 1 (fundação) e 2 (tracking) concluídas — as demais seguem sprint a
+sprint.
