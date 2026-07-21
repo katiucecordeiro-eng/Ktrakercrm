@@ -59,6 +59,20 @@ Arquitetura, convenções e roadmap completo estão em [`CLAUDE.md`](./CLAUDE.md
 4. Para validar no Gerenciador de Eventos da Meta, defina
    `META_TEST_EVENT_CODE_<SLUG>` no `.env.local`/Vercel (veja `.env.example`).
 
+## Configurar o webhook da Hotmart
+
+1. Cadastre o(s) ID(s) de produto Hotmart da oferta em
+   `/dashboard/settings/offers` (campo "Produtos Hotmart").
+2. No painel da Hotmart, em Ferramentas → Webhook, configure a URL
+   `https://SEUDOMINIO/api/webhooks/hotmart` e ative os eventos: compra
+   aprovada/completa, reembolso, chargeback, cancelamento, boleto emitido
+   e carrinho abandonado.
+3. Defina `HOTMART_HOTTOK` no `.env.local`/Vercel com o token mostrado na
+   configuração do webhook.
+4. Todo webhook recebido fica auditado na tabela `webhook_logs`
+   (`payload` guarda o corpo bruto) — útil para conferir o formato real
+   caso algum campo não seja reconhecido (ver nota em `CLAUDE.md`).
+
 ## Deploy (Vercel)
 
 1. Importe o repositório em [vercel.com/new](https://vercel.com/new).
@@ -79,5 +93,5 @@ npm run lint    # eslint
 ## Status do projeto
 
 Ver roadmap de sprints em [`CLAUDE.md`](./CLAUDE.md#roadmap-de-sprints).
-Sprints 1 (fundação) e 2 (tracking) concluídas — as demais seguem sprint a
-sprint.
+Sprints 1 (fundação), 2 (tracking) e 3 (Hotmart) concluídas — as demais
+seguem sprint a sprint.

@@ -103,6 +103,44 @@ deduplicação client/server na Meta.
   suficiente como proteção básica; não é distribuído entre instâncias
   serverless (upgrade futuro: Upstash Redis, se o tráfego justificar).
 
+### Webhooks Hotmart (Sprint 3)
+
+- `app/api/webhooks/hotmart/route.ts`: valida `hottok` (header `hottok`,
+  com fallback para o campo `hottok` no corpo do JSON) contra
+  `HOTMART_HOTTOK`; se a env var não estiver definida, a validação é
+  pulada (útil em desenvolvimento). Todo payload recebido é gravado em
+  `webhook_logs` (`processed`, `ignored_event`, `invalid_hottok`,
+  `invalid_payload` ou `error`), mesmo quando o Supabase está fora do ar
+  (nesse caso responde 200 sem gravar, e loga no console).
+- **Importante:** o formato exato do payload da Hotmart (em especial onde
+  vêm os parâmetros de rastreamento `sck`/`src`) não pôde ser confirmado
+  contra a documentação ao vivo neste ambiente (sem acesso de rede aos
+  domínios da Hotmart). `lib/hotmart/extract.ts` tenta múltiplos caminhos
+  plausíveis (`purchase.tracking.source_sck`, `purchase.origin.sck`,
+  `purchase.sck`, `sck` no topo, etc.) e o payload bruto sempre fica em
+  `webhook_logs.payload` — **assim que chegar o primeiro webhook real,
+  conferir ali o caminho correto e ajustar os extratores se necessário.**
+- Resolve a oferta por `product.id` comparando com
+  `offers.hotmart_product_ids` (`array.contains`). Casa a venda com o
+  visitante por `sck` (que é o próprio `visitor_id`); sem match, tenta pelo
+  e-mail do comprador na tabela `leads` (lead mais recente com esse
+  e-mail); sem nenhum dos dois, a venda fica sem atribuição
+  (`visitor_id`/UTMs nulos).
+- `sales` é gravada via `upsert` por `hotmart_transaction_id` — reentregas
+  do mesmo webhook (ou eventos sequenciais da mesma transação, ex.
+  aprovado → reembolsado) atualizam a mesma linha em vez de duplicar.
+- `net_value` fica `null` por enquanto — depende do detalhamento de
+  comissão (`data.commissions`) que também não pôde ser validado; calcular
+  isso é candidato a ajuste fino quando houver payloads reais para
+  inspecionar.
+- `Purchase` só é disparado para Meta CAPI + GA4 **na primeira vez** que a
+  transação vira `approved` (comparação com o status anterior salvo no
+  banco) — reentregas do webhook não duplicam a conversão no Meta/GA4.
+  Reembolso/chargeback/cancelamento só atualizam `sales.status` (sem
+  disparo à Meta — não há um evento nativo de "estorno" na CAPI).
+- `PURCHASE_OUT_OF_SHOPPING_CART` (abandono de carrinho) grava um registro
+  em `leads` com `source = 'hotmart_cart_abandonment'`, sem criar venda.
+
 ## Schema do banco
 
 Migrations versionadas em `supabase/migrations/`. `0001_init.sql` cria:
@@ -167,7 +205,7 @@ npm run lint
 2. **✅ Sprint 2 — Tracking:** `public/track.js` + `/api/track` + envio Meta
    CAPI/GA4 com dedup e hashing SHA-256 + vinculador `sck` + validação com
    `test_event_code`.
-3. **Sprint 3 — Hotmart:** `/api/webhooks/hotmart` completo, casamento
+3. **✅ Sprint 3 — Hotmart:** `/api/webhooks/hotmart` completo, casamento
    venda↔visitante, `Purchase` server-side, leads de abandono, logs.
 4. **Sprint 4 — Meta Spend:** `/api/cron/meta-spend` (Marketing API),
    Vercel Cron, backfill manual, join campanha/criativo via UTM.
