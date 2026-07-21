@@ -200,6 +200,35 @@ deduplicação client/server na Meta.
 - Sem Supabase configurado, a Visão Geral cai no aviso padrão em vez de
   tentar renderizar os gráficos (mesma convenção das sprints anteriores).
 
+### CRM & polish (Sprint 6)
+
+- **View `visitor_summary`** (migration `0005`): agrega cada visitante com
+  o lead mais recente (`leads`, por `created_at desc`), o status de venda
+  prioritário (reembolso/chargeback > aprovada > outro) e a contagem de
+  eventos — usada pela busca em `/dashboard/visitors`.
+- **Limitação conhecida de busca por e-mail**: `sales` só guarda
+  `buyer_email_hash` (hash SHA-256, por LGPD) — não há e-mail em texto
+  puro do comprador nessa tabela. A busca por e-mail em
+  `/dashboard/visitors` só encontra quem passou por `leads` (formulário
+  próprio ou abandono de carrinho); um comprador que nunca gerou lead só é
+  localizável pelo `visitor_id`.
+- **Status do visitante** (`lib/crm/queries.ts#deriveStatus`): reembolsado
+  > comprador > lead > visitante — nessa ordem de prioridade.
+- `/dashboard/visitors/[id]`: perfil com dados brutos do visitante (fbp,
+  fbc, ga_client_id, IP, UA, geo) + timeline de eventos
+  (`event-timeline.tsx`) expansível mostrando `meta_response` (payload
+  exato devolvido pela Meta) e os status `meta_status`/`ga4_status`.
+- **Diagnóstico de conexão** (`connection-test-dialog.tsx` +
+  `test-actions.ts`): "Testar" dispara uma chamada real — um `PageView`
+  de teste para a Meta CAPI (aparece no Test Events se
+  `META_TEST_EVENT_CODE_<OFERTA>` estiver configurado) e uma consulta de
+  1 dia à Marketing API. `recent-webhooks.tsx` lista as últimas 10
+  entregas do webhook Hotmart (`webhook_logs`) para depuração.
+- **Responsivo**: sidebar vira um drawer off-canvas abaixo do breakpoint
+  `md` (`components/layout/mobile-sidebar-context.tsx` +
+  `mobile-menu-button.tsx`), com overlay e fechamento automático ao
+  navegar.
+
 ## Schema do banco
 
 Migrations versionadas em `supabase/migrations/`. `0001_init.sql` cria:
@@ -273,9 +302,14 @@ npm run lint
    Vercel Cron, backfill manual, join campanha/criativo via UTM.
 5. **✅ Sprint 5 — Dashboard:** KPIs, funil, gráficos temporais, tabela de
    campanhas/criativos, filtros dinâmicos, Supabase Realtime.
-6. **Sprint 6 — CRM & polish:** perfil do visitante com timeline de eventos
-   + payloads Meta, página de configurações completa (teste de conexão),
-   responsivo, ajustes visuais finais.
+6. **✅ Sprint 6 — CRM & polish:** perfil do visitante com timeline de
+   eventos + payloads Meta, página de configurações completa (teste de
+   conexão), responsivo, ajustes visuais finais.
+
+Todas as 6 sprints do escopo original estão completas. Próximos ajustes
+finos ficam a critério do uso real (ver limitações documentadas em cada
+seção acima — sobretudo o formato do payload da Hotmart, nunca validado
+contra uma entrega real).
 
 Cada sprint: apresentar plano → implementar → checklist de testes manuais →
 commit descritivo.

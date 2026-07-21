@@ -28,7 +28,7 @@ export function OfferSwitcher({ offers }: { offers: Offer[] }) {
 
   return (
     <Select value={current} onValueChange={handleChange}>
-      <SelectTrigger className="w-[220px]">
+      <SelectTrigger className="w-[140px] md:w-[220px]">
         <SelectValue placeholder="Todas as ofertas" />
       </SelectTrigger>
       <SelectContent>

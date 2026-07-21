@@ -17,6 +17,8 @@ import type { Offer } from "@/lib/types/offer";
 import { OfferFormDialog } from "./offer-form-dialog";
 import { InstallSnippetDialog } from "./install-snippet-dialog";
 import { SyncAdSpendDialog } from "./sync-ad-spend-dialog";
+import { ConnectionTestDialog } from "./connection-test-dialog";
+import { RecentWebhooks } from "./recent-webhooks";
 
 async function getOffers(): Promise<Offer[]> {
   if (!isSupabaseConfigured()) return [];
@@ -95,6 +97,7 @@ export default async function OffersPage() {
                     <TableCell className="flex justify-end gap-2 text-right">
                       <InstallSnippetDialog slug={offer.slug} />
                       <SyncAdSpendDialog offerId={offer.id} />
+                      <ConnectionTestDialog offerId={offer.id} />
                       <OfferFormDialog
                         offer={offer}
                         trigger={
@@ -116,6 +119,8 @@ export default async function OffersPage() {
           )}
         </CardContent>
       </Card>
+
+      <RecentWebhooks />
     </div>
   );
 }

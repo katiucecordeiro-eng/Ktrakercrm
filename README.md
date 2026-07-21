@@ -44,7 +44,7 @@ Arquitetura, convenções e roadmap completo estão em [`CLAUDE.md`](./CLAUDE.md
    (ou cole o conteúdo de cada arquivo em `supabase/migrations/`, em ordem,
    no SQL Editor do painel do Supabase). A migration `0004` habilita o
    Supabase Realtime na tabela `events`, usado pelo log de eventos ao vivo
-   do dashboard.
+   do dashboard; a `0005` cria a view usada pela busca em CRM / Visitantes.
 
 5. Crie seu usuário de acesso ao painel em Authentication → Users no painel
    do Supabase (e-mail + senha) — é esse usuário que faz login em `/login`.
@@ -73,7 +73,31 @@ Arquitetura, convenções e roadmap completo estão em [`CLAUDE.md`](./CLAUDE.md
    configuração do webhook.
 4. Todo webhook recebido fica auditado na tabela `webhook_logs`
    (`payload` guarda o corpo bruto) — útil para conferir o formato real
-   caso algum campo não seja reconhecido (ver nota em `CLAUDE.md`).
+   caso algum campo não seja reconhecido (ver nota em `CLAUDE.md`). As
+   últimas 10 entregas aparecem direto na tela de Configurações → Ofertas.
+
+## CRM / Visitantes
+
+Em `/dashboard/visitors`: tabela pesquisável (nome, e-mail, telefone ou
+`visitor_id`) de todo mundo que já passou pelo tracking, com status
+calculado automaticamente (visitante, lead, comprador ou reembolsado).
+Clique numa linha para abrir o perfil completo: dados brutos do
+visitante (fbp, fbc, ga_client_id, IP, geo) e uma timeline de eventos —
+cada evento expande para mostrar o payload exato enviado à Meta e a
+resposta recebida.
+
+> A busca por e-mail só encontra quem já gerou um lead (formulário
+> próprio ou carrinho abandonado). Vendas aprovadas guardam só o hash do
+> e-mail do comprador (LGPD) — sem lead associado, esse visitante só é
+> localizável pelo `visitor_id`.
+
+## Testar as conexões
+
+Na linha de cada oferta em Configurações → Ofertas, o botão
+"Diagnóstico" dispara chamadas reais para validar as credenciais: um
+evento `PageView` de teste para a Meta Conversions API (aparece no Test
+Events se `META_TEST_EVENT_CODE_<OFERTA>` estiver definida) e uma
+consulta de 1 dia à Marketing API.
 
 ## Sincronizar gasto de anúncios (Meta Marketing API)
 
@@ -108,6 +132,9 @@ npm run lint    # eslint
 
 ## Status do projeto
 
-Ver roadmap de sprints em [`CLAUDE.md`](./CLAUDE.md#roadmap-de-sprints).
-Sprints 1 (fundação), 2 (tracking), 3 (Hotmart), 4 (Meta Spend) e 5
-(dashboard) concluídas — falta a Sprint 6 (CRM & polish).
+Ver roadmap de sprints em [`CLAUDE.md`](./CLAUDE.md#roadmap-de-sprints). As
+6 sprints do escopo original estão concluídas: fundação, tracking,
+Hotmart, Meta Spend, dashboard e CRM & polish. Pontos de atenção para
+revisar com dados reais estão documentados no `CLAUDE.md` (o principal é
+confirmar o formato exato do payload da Hotmart no primeiro webhook
+real).
