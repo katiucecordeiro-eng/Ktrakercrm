@@ -161,6 +161,45 @@ deduplicação client/server na Meta.
 - `offers.meta_ad_account_id` (migration `0002`) guarda o ID da conta de
   anúncio (com ou sem prefixo `act_`) usado nessa sincronização.
 
+### Dashboard (Sprint 5)
+
+- **Views SQL** (migration `0003`): `daily_metrics`, `funnel_by_offer` e
+  `campaign_performance` pré-agregam `sales`/`events`/`ad_spend` por dia
+  (e por campanha/conjunto/anúncio, no caso da última) — o servidor
+  Next.js consulta essas views já pequenas e só faz o reagrupamento leve
+  por semana/mês em `lib/reports/queries.ts`, nunca soma linha a linha de
+  `sales`/`events` cruas. Todas com `security_invoker = true` para
+  respeitar a RLS de quem consulta.
+- `lib/reports/filters.ts`: resolve os presets de período (hoje, ontem,
+  7d, 30d, este mês, mês passado, personalizado) e a oferta selecionada a
+  partir da URL (`?period=...&offer=...&since=...&until=...`), e escolhe
+  a granularidade do gráfico temporal (hora/dia/semana/mês) conforme o
+  tamanho do intervalo.
+- `lib/reports/queries.ts`: `getKpis`, `getFunnel`, `getTimeSeries`,
+  `getCampaignTable`, `getPaymentBreakdown`, `getHourlyBreakdown`,
+  `getRegionRanking` — cada uma consulta as views/tabelas e devolve dados
+  já prontos para os componentes.
+- **Simplificações assumidas** (documentar para revisar quando houver
+  dados reais): `sales.net_value` ainda não é calculado (Sprint 3), então
+  "Faturamento líquido" = bruto − reembolsos (sem descontar taxa da
+  Hotmart); o "Lucro" da série temporal não desconta o imposto por oferta
+  quando "todas as ofertas" está selecionado (o KPI card de Lucro
+  desconta corretamente, ponderado por oferta).
+- Granularidade "hora" (períodos de 1 dia) usa `sales.approved_at`
+  diretamente por não existir quebra horária em `ad_spend`; o gasto é
+  distribuído igualmente pelas 24h como aproximação.
+- Tabela de campanhas é expansível (campanha → conjunto → anúncio) via
+  estado no client (`campaign-table.tsx`); badge verde quando ROAS ≥ 2x
+  (`ROAS_THRESHOLD`, ainda uma constante — vira configurável num ajuste
+  futuro).
+- **Log de eventos ao vivo**: `live-event-log.tsx` assina
+  `postgres_changes` (INSERT em `events`) via Supabase Realtime. Exige
+  `alter publication supabase_realtime add table events;` (migration
+  `0004`) — sem isso, o Realtime simplesmente não emite nada (sem erro
+  visível).
+- Sem Supabase configurado, a Visão Geral cai no aviso padrão em vez de
+  tentar renderizar os gráficos (mesma convenção das sprints anteriores).
+
 ## Schema do banco
 
 Migrations versionadas em `supabase/migrations/`. `0001_init.sql` cria:
@@ -232,7 +271,7 @@ npm run lint
    venda↔visitante, `Purchase` server-side, leads de abandono, logs.
 4. **✅ Sprint 4 — Meta Spend:** `/api/cron/meta-spend` (Marketing API),
    Vercel Cron, backfill manual, join campanha/criativo via UTM.
-5. **Sprint 5 — Dashboard:** KPIs, funil, gráficos temporais, tabela de
+5. **✅ Sprint 5 — Dashboard:** KPIs, funil, gráficos temporais, tabela de
    campanhas/criativos, filtros dinâmicos, Supabase Realtime.
 6. **Sprint 6 — CRM & polish:** perfil do visitante com timeline de eventos
    + payloads Meta, página de configurações completa (teste de conexão),

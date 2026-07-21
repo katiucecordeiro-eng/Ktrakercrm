@@ -41,8 +41,10 @@ Arquitetura, convenções e roadmap completo estão em [`CLAUDE.md`](./CLAUDE.md
    npx supabase db push
    ```
 
-   (ou cole o conteúdo de `supabase/migrations/0001_init.sql` no SQL Editor
-   do painel do Supabase).
+   (ou cole o conteúdo de cada arquivo em `supabase/migrations/`, em ordem,
+   no SQL Editor do painel do Supabase). A migration `0004` habilita o
+   Supabase Realtime na tabela `events`, usado pelo log de eventos ao vivo
+   do dashboard.
 
 5. Crie seu usuário de acesso ao painel em Authentication → Users no painel
    do Supabase (e-mail + senha) — é esse usuário que faz login em `/login`.
@@ -107,5 +109,5 @@ npm run lint    # eslint
 ## Status do projeto
 
 Ver roadmap de sprints em [`CLAUDE.md`](./CLAUDE.md#roadmap-de-sprints).
-Sprints 1 (fundação), 2 (tracking), 3 (Hotmart) e 4 (Meta Spend)
-concluídas — as demais seguem sprint a sprint.
+Sprints 1 (fundação), 2 (tracking), 3 (Hotmart), 4 (Meta Spend) e 5
+(dashboard) concluídas — falta a Sprint 6 (CRM & polish).
