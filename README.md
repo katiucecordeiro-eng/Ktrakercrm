@@ -73,13 +73,27 @@ Arquitetura, convenções e roadmap completo estão em [`CLAUDE.md`](./CLAUDE.md
    (`payload` guarda o corpo bruto) — útil para conferir o formato real
    caso algum campo não seja reconhecido (ver nota em `CLAUDE.md`).
 
+## Sincronizar gasto de anúncios (Meta Marketing API)
+
+1. Gere um token de longa duração da Marketing API (com permissão
+   `ads_read` na conta de anúncio) e defina
+   `META_MARKETING_API_ACCESS_TOKEN` no `.env.local`/Vercel.
+2. Em cada oferta, preencha o campo "Meta Ad Account ID" (com ou sem
+   prefixo `act_`).
+3. O cron (`/api/cron/meta-spend`, configurado em `vercel.json`)
+   resincroniza os últimos 3 dias a cada hora automaticamente na Vercel.
+   Para importar um período maior de uma vez, use o botão "Sincronizar
+   gasto" na linha da oferta em Configurações.
+4. Defina `CRON_SECRET` no `.env.local`/Vercel para proteger o endpoint do
+   cron (a Vercel injeta o header de autorização automaticamente).
+
 ## Deploy (Vercel)
 
 1. Importe o repositório em [vercel.com/new](https://vercel.com/new).
 2. Em Settings → Environment Variables, adicione as mesmas variáveis do
    `.env.local` (Production e Preview).
-3. Deploy. As rotas de cron (Sprint 4) serão configuradas em `vercel.json`
-   quando o sync de gasto da Meta for implementado.
+3. Deploy. O cron de gasto (`vercel.json`) é ativado automaticamente — no
+   plano Hobby a Vercel executa 1x/dia mesmo com o schedule de 1h.
 
 ## Comandos
 
@@ -93,5 +107,5 @@ npm run lint    # eslint
 ## Status do projeto
 
 Ver roadmap de sprints em [`CLAUDE.md`](./CLAUDE.md#roadmap-de-sprints).
-Sprints 1 (fundação), 2 (tracking) e 3 (Hotmart) concluídas — as demais
-seguem sprint a sprint.
+Sprints 1 (fundação), 2 (tracking), 3 (Hotmart) e 4 (Meta Spend)
+concluídas — as demais seguem sprint a sprint.

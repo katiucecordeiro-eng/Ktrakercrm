@@ -85,6 +85,12 @@ export function OfferFormDialog({
               placeholder="META_CAPI_TOKEN_OFERTA1"
             />
           </div>
+          <Field
+            label="Meta Ad Account ID (gasto de anúncios)"
+            name="meta_ad_account_id"
+            defaultValue={offer?.meta_ad_account_id ?? ""}
+            placeholder="act_1234567890 ou 1234567890"
+          />
           <div className="grid grid-cols-2 gap-4">
             <Field
               label="GA4 Measurement ID"

@@ -141,13 +141,35 @@ deduplicação client/server na Meta.
 - `PURCHASE_OUT_OF_SHOPPING_CART` (abandono de carrinho) grava um registro
   em `leads` com `source = 'hotmart_cart_abandonment'`, sem criar venda.
 
+### Sincronização de gasto Meta (Sprint 4)
+
+- `app/api/cron/meta-spend/route.ts` (`GET`): a cada execução resincroniza
+  os **últimos 3 dias** (a Meta ajusta gasto/impressões com atraso) para
+  todas as ofertas ativas com `meta_ad_account_id` preenchido. Protegido
+  por `CRON_SECRET` — a Vercel injeta `Authorization: Bearer
+  <CRON_SECRET>` automaticamente nas chamadas do Cron quando essa env var
+  está definida; sem ela, a rota fica aberta (conveniente em dev).
+- **Vercel Cron no plano Hobby só permite 1 execução/dia** (não a cada
+  hora); `vercel.json` já está configurado para `0 * * * *` (a cada hora),
+  mas a Vercel ajusta automaticamente a frequência real conforme o plano.
+- `lib/meta/marketing-api.ts`: busca Insights (`level: ad`,
+  `time_increment: 1`) com paginação. `lib/meta/sync-ad-spend.ts`: upsert
+  em `ad_spend` por `(date, ad_id)`, calculando `cpc`/`cpm`.
+- Backfill manual: botão "Sincronizar gasto" em Configurações → Ofertas
+  (período customizável), via Server Action — usa o client autenticado do
+  painel, não expõe uma rota pública de escrita.
+- `offers.meta_ad_account_id` (migration `0002`) guarda o ID da conta de
+  anúncio (com ou sem prefixo `act_`) usado nessa sincronização.
+
 ## Schema do banco
 
 Migrations versionadas em `supabase/migrations/`. `0001_init.sql` cria:
 
-- **offers** — dados de cada oferta. Segredos (token CAPI, GA4 api secret)
-  **não** ficam no banco — só a referência ao nome da env var
-  (`meta_capi_token_ref`, `ga4_api_secret_ref`). O valor real vive na Vercel.
+- **offers** — dados de cada oferta, incluindo `meta_ad_account_id`
+  (migration `0002`, conta de anúncio usada no sync de gasto). Segredos
+  (token CAPI, GA4 api secret) **não** ficam no banco — só a referência ao
+  nome da env var (`meta_capi_token_ref`, `ga4_api_secret_ref`). O valor
+  real vive na Vercel.
 - **visitors** — 1 registro por `visitor_id`, com UTMs/cookies/geo do
   primeiro contato.
 - **events** — todo evento de tracking, com snapshot de UTMs e status de
@@ -176,7 +198,8 @@ Ver `.env.example` — documenta cada uma. Resumo:
 | `HOTMART_HOTTOK` | valida o header `hottok` no webhook |
 | `META_CAPI_TOKEN_<OFERTA>` | token CAPI por oferta (nome referenciado em `offers.meta_capi_token_ref`) |
 | `META_TEST_EVENT_CODE_<OFERTA>` | validação no Test Events da Meta |
-| `META_MARKETING_API_ACCESS_TOKEN` / `META_AD_ACCOUNT_ID` | cron de gasto (Sprint 4) |
+| `META_MARKETING_API_ACCESS_TOKEN` | token da Marketing API para o cron de gasto (Sprint 4); a conta de anúncio é por oferta (`offers.meta_ad_account_id`) |
+| `CRON_SECRET` | protege `/api/cron/meta-spend`; a Vercel injeta o header automaticamente quando definida |
 | `GA4_API_SECRET_<OFERTA>` | GA4 Measurement Protocol por oferta |
 | `NEXT_PUBLIC_APP_URL` | usada em CORS e nos snippets de instalação |
 
@@ -207,7 +230,7 @@ npm run lint
    `test_event_code`.
 3. **✅ Sprint 3 — Hotmart:** `/api/webhooks/hotmart` completo, casamento
    venda↔visitante, `Purchase` server-side, leads de abandono, logs.
-4. **Sprint 4 — Meta Spend:** `/api/cron/meta-spend` (Marketing API),
+4. **✅ Sprint 4 — Meta Spend:** `/api/cron/meta-spend` (Marketing API),
    Vercel Cron, backfill manual, join campanha/criativo via UTM.
 5. **Sprint 5 — Dashboard:** KPIs, funil, gráficos temporais, tabela de
    campanhas/criativos, filtros dinâmicos, Supabase Realtime.

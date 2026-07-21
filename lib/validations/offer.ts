@@ -10,6 +10,7 @@ export const offerFormSchema = z.object({
   domain: z.string().trim().optional().or(z.literal("")),
   meta_pixel_id: z.string().trim().optional().or(z.literal("")),
   meta_capi_token_ref: z.string().trim().optional().or(z.literal("")),
+  meta_ad_account_id: z.string().trim().optional().or(z.literal("")),
   ga4_measurement_id: z.string().trim().optional().or(z.literal("")),
   ga4_api_secret_ref: z.string().trim().optional().or(z.literal("")),
   hotmart_product_ids: z
