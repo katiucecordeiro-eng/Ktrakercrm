@@ -120,6 +120,12 @@ consulta de 1 dia à Marketing API.
    `.env.local` (Production e Preview).
 3. Deploy. O cron de gasto (`vercel.json`) é ativado automaticamente — no
    plano Hobby a Vercel executa 1x/dia mesmo com o schedule de 1h.
+4. **Troubleshooting**: se a página não carregar depois de um merge/push,
+   confira em Deployments se existe um build com o commit mais recente de
+   `main` (não um "Redeploy" de um commit antigo — isso reconstrói o
+   mesmo código velho, não o atual). Se não aparecer nenhum deployment
+   novo após um push em `main`, o Git integration está desconectado —
+   revise em Settings → Git.
 
 ## Comandos
 
