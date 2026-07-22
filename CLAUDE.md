@@ -149,9 +149,14 @@ deduplicação client/server na Meta.
   por `CRON_SECRET` — a Vercel injeta `Authorization: Bearer
   <CRON_SECRET>` automaticamente nas chamadas do Cron quando essa env var
   está definida; sem ela, a rota fica aberta (conveniente em dev).
-- **Vercel Cron no plano Hobby só permite 1 execução/dia** (não a cada
-  hora); `vercel.json` já está configurado para `0 * * * *` (a cada hora),
-  mas a Vercel ajusta automaticamente a frequência real conforme o plano.
+- **Vercel Cron no plano Hobby só permite 1 execução/dia.** `vercel.json`
+  está configurado para `0 9 * * *` (1x/dia, às 9h). **Atenção:** um
+  schedule mais frequente que 1x/dia (ex.: `0 * * * *`, a cada hora) faz a
+  Vercel **recusar o deploy inteiro** no plano Hobby — não é um ajuste
+  automático de frequência, é falha de build. Isso já aconteceu neste
+  projeto (todos os deploys entre a Sprint 4 e a correção falhavam
+  silenciosamente por causa disso). Se migrar para o plano Pro, pode
+  voltar para um schedule mais frequente.
 - `lib/meta/marketing-api.ts`: busca Insights (`level: ad`,
   `time_increment: 1`) com paginação. `lib/meta/sync-ad-spend.ts`: upsert
   em `ad_spend` por `(date, ad_id)`, calculando `cpc`/`cpm`.
