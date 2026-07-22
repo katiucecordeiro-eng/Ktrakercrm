@@ -1,3 +1,4 @@
+import { decryptSecret } from "@/lib/crypto/secrets";
 import { postWithRetry, type SendResult } from "@/lib/utils/fetch-retry";
 import type { Offer } from "@/lib/types/offer";
 
@@ -19,15 +20,15 @@ export async function sendGa4Event(
 ): Promise<SendResult | { status: "skipped"; response: unknown }> {
   const { offer } = params;
 
-  if (!offer.ga4_measurement_id || !offer.ga4_api_secret_ref) {
-    return { status: "skipped", response: { reason: "Oferta sem GA4 Measurement ID ou API secret configurado" } };
+  if (!offer.ga4_measurement_id) {
+    return { status: "skipped", response: { reason: "Oferta sem GA4 Measurement ID configurado" } };
   }
 
-  const secret = process.env[offer.ga4_api_secret_ref];
+  const secret = decryptSecret(offer.ga4_api_secret);
   if (!secret) {
     return {
       status: "skipped",
-      response: { reason: `Env var ${offer.ga4_api_secret_ref} não definida` },
+      response: { reason: "GA4 API secret não configurado para esta oferta" },
     };
   }
 

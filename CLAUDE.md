@@ -234,15 +234,50 @@ deduplicação client/server na Meta.
   `mobile-menu-button.tsx`), com overlay e fechamento automático ao
   navegar.
 
+### Segredos por oferta (pós-lançamento)
+
+Depois do primeiro deploy, o fluxo original de "token = referência a nome
+de env var" (uma env var por oferta/token na Vercel) foi trocado por
+**tokens colados direto no formulário**, para não precisar redeployar/criar
+env var toda vez que uma oferta nova é cadastrada:
+
+- `lib/crypto/secrets.ts`: `encryptSecret`/`decryptSecret` (AES-256-GCM)
+  usando a única env var `SECRETS_ENCRYPTION_KEY` como chave. Formato
+  salvo no banco: `"<iv base64>.<authTag base64>.<ciphertext base64>"`.
+- Migration `0006`: colunas `offers.meta_capi_token`, `offers.meta_ads_token`
+  e `offers.ga4_api_secret` guardam o ciphertext (nunca o token em texto
+  puro).
+- Formulário de oferta (`offer-form-dialog.tsx`): os 3 campos de token são
+  `type="password"`, sempre vazios ao abrir — o valor atual só aparece
+  mascarado (`••••••` + 6 últimos caracteres, calculado em
+  `page.tsx`/`maskSecret` no servidor) como `placeholder`. Deixar o campo
+  em branco ao salvar preserva o token já salvo (`actions.ts` omite a
+  coluna do `update` quando o campo vem vazio); colar um valor novo
+  substitui.
+- `lib/meta/capi.ts`, `lib/ga4/measurement-protocol.ts`,
+  `lib/meta/sync-ad-spend.ts#resolveMetaAdsToken`: descriptografam o token
+  da oferta na hora de usar — nunca ficam em variável fora dessas funções.
+  O token da Marketing API tem fallback para o antigo
+  `META_MARKETING_API_ACCESS_TOKEN` global, caso uma oferta não tenha
+  `meta_ads_token` próprio ainda.
+- Se `SECRETS_ENCRYPTION_KEY` mudar depois de tokens já salvos, esses
+  tokens ficam ilegíveis (a descriptografia falha silenciosamente,
+  tratada como "não configurado") — é preciso recolar os tokens.
+
 ## Schema do banco
 
 Migrations versionadas em `supabase/migrations/`. `0001_init.sql` cria:
 
 - **offers** — dados de cada oferta, incluindo `meta_ad_account_id`
-  (migration `0002`, conta de anúncio usada no sync de gasto). Segredos
-  (token CAPI, GA4 api secret) **não** ficam no banco — só a referência ao
-  nome da env var (`meta_capi_token_ref`, `ga4_api_secret_ref`). O valor
-  real vive na Vercel.
+  (migration `0002`, conta de anúncio usada no sync de gasto). Token CAPI,
+  token da Marketing API e GA4 API secret são colados direto no formulário
+  e guardados **criptografados** (AES-256-GCM, `lib/crypto/secrets.ts`) nas
+  colunas `meta_capi_token`/`meta_ads_token`/`ga4_api_secret` (migration
+  `0006`) — a chave de criptografia (`SECRETS_ENCRYPTION_KEY`) é a única
+  env var envolvida, definida uma vez só, nunca por oferta. As colunas
+  antigas `meta_capi_token_ref`/`ga4_api_secret_ref` (referência a nome de
+  env var) ficam no schema mas não são mais lidas por nenhum código —
+  substituídas por esse fluxo depois do lançamento inicial.
 - **visitors** — 1 registro por `visitor_id`, com UTMs/cookies/geo do
   primeiro contato.
 - **events** — todo evento de tracking, com snapshot de UTMs e status de
@@ -268,13 +303,18 @@ Ver `.env.example` — documenta cada uma. Resumo:
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | client + server (respeita RLS) |
 | `SUPABASE_SERVICE_ROLE_KEY` | rotas server-only, ignora RLS |
+| `SECRETS_ENCRYPTION_KEY` | criptografa os tokens colados por oferta (Meta CAPI, Marketing API, GA4) — única, gerada uma vez, nunca por oferta |
 | `HOTMART_HOTTOK` | valida o header `hottok` no webhook |
-| `META_CAPI_TOKEN_<OFERTA>` | token CAPI por oferta (nome referenciado em `offers.meta_capi_token_ref`) |
-| `META_TEST_EVENT_CODE_<OFERTA>` | validação no Test Events da Meta |
-| `META_MARKETING_API_ACCESS_TOKEN` | token da Marketing API para o cron de gasto (Sprint 4); a conta de anúncio é por oferta (`offers.meta_ad_account_id`) |
+| `META_TEST_EVENT_CODE_<OFERTA>` | validação no Test Events da Meta (ainda por env var, derivada do slug) |
+| `META_MARKETING_API_ACCESS_TOKEN` | fallback legado se uma oferta não tiver `meta_ads_token` próprio configurado |
 | `CRON_SECRET` | protege `/api/cron/meta-spend`; a Vercel injeta o header automaticamente quando definida |
-| `GA4_API_SECRET_<OFERTA>` | GA4 Measurement Protocol por oferta |
 | `NEXT_PUBLIC_APP_URL` | usada em CORS e nos snippets de instalação |
+
+Token CAPI (`offers.meta_capi_token`), token da Marketing API
+(`offers.meta_ads_token`) e GA4 API secret (`offers.ga4_api_secret`) **não**
+são env vars — são colados direto no formulário de cada oferta em
+Configurações e salvos criptografados no banco (ver seção "Segredos por
+oferta" abaixo).
 
 ## Comandos
 

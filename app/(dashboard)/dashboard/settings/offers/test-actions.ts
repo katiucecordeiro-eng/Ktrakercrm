@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sendMetaEvent } from "@/lib/meta/capi";
 import { fetchMetaInsights } from "@/lib/meta/marketing-api";
+import { resolveMetaAdsToken } from "@/lib/meta/sync-ad-spend";
 import type { Offer } from "@/lib/types/offer";
 
 export type TestActionState = { success?: string; error?: string } | undefined;
@@ -63,11 +64,17 @@ export async function testMarketingApi(
     return { error: "Cadastre o Meta Ad Account ID desta oferta primeiro." };
   }
 
+  const accessToken = resolveMetaAdsToken(offer);
+  if (!accessToken) {
+    return { error: "Cadastre o token da Marketing API desta oferta primeiro." };
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const { rows, error } = await fetchMetaInsights({
     adAccountId: offer.meta_ad_account_id,
     since: today,
     until: today,
+    accessToken,
   });
 
   if (error) return { error };

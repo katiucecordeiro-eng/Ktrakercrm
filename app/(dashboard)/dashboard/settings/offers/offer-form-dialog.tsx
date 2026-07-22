@@ -18,11 +18,21 @@ import { Switch } from "@/components/ui/switch";
 import type { Offer } from "@/lib/types/offer";
 import { createOffer, updateOffer, type OfferActionState } from "./actions";
 
+type SafeOffer = Omit<Offer, "meta_capi_token" | "meta_ads_token" | "ga4_api_secret">;
+
+type MaskedSecrets = {
+  metaCapiToken: string | null;
+  metaAdsToken: string | null;
+  ga4ApiSecret: string | null;
+};
+
 export function OfferFormDialog({
   offer,
+  maskedSecrets,
   trigger,
 }: {
-  offer?: Offer;
+  offer?: SafeOffer;
+  maskedSecrets?: MaskedSecrets;
   trigger: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -51,8 +61,9 @@ export function OfferFormDialog({
           <DialogTitle>{offer ? "Editar oferta" : "Nova oferta"}</DialogTitle>
           <DialogDescription>
             Cada oferta tem seu próprio domínio, Pixel Meta, tokens e produtos
-            Hotmart. Segredos (tokens) ficam em variáveis de ambiente — aqui
-            você só guarda a referência do nome da env var.
+            Hotmart. Tokens ficam criptografados no banco — cole o valor
+            direto do Meta/GA4; deixe em branco para manter o que já está
+            salvo.
           </DialogDescription>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
@@ -78,30 +89,35 @@ export function OfferFormDialog({
               name="meta_pixel_id"
               defaultValue={offer?.meta_pixel_id ?? ""}
             />
-            <Field
-              label="Env var do token CAPI"
-              name="meta_capi_token_ref"
-              defaultValue={offer?.meta_capi_token_ref ?? ""}
-              placeholder="META_CAPI_TOKEN_OFERTA1"
+            <SecretField
+              label="Token CAPI da Meta"
+              name="meta_capi_token"
+              masked={maskedSecrets?.metaCapiToken}
             />
           </div>
-          <Field
-            label="Meta Ad Account ID (gasto de anúncios)"
-            name="meta_ad_account_id"
-            defaultValue={offer?.meta_ad_account_id ?? ""}
-            placeholder="act_1234567890 ou 1234567890"
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Field
+              label="Meta Ad Account ID (gasto de anúncios)"
+              name="meta_ad_account_id"
+              defaultValue={offer?.meta_ad_account_id ?? ""}
+              placeholder="act_1234567890 ou 1234567890"
+            />
+            <SecretField
+              label="Token da Marketing API"
+              name="meta_ads_token"
+              masked={maskedSecrets?.metaAdsToken}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <Field
               label="GA4 Measurement ID"
               name="ga4_measurement_id"
               defaultValue={offer?.ga4_measurement_id ?? ""}
             />
-            <Field
-              label="Env var do GA4 API secret"
-              name="ga4_api_secret_ref"
-              defaultValue={offer?.ga4_api_secret_ref ?? ""}
-              placeholder="GA4_API_SECRET_OFERTA1"
+            <SecretField
+              label="GA4 API secret"
+              name="ga4_api_secret"
+              masked={maskedSecrets?.ga4ApiSecret}
             />
           </div>
           <Field
@@ -174,6 +190,32 @@ function Field({
         placeholder={placeholder}
         required={required}
       />
+    </div>
+  );
+}
+
+function SecretField({
+  label,
+  name,
+  masked,
+}: {
+  label: string;
+  name: string;
+  masked?: string | null;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={name}>{label}</Label>
+      <Input
+        id={name}
+        name={name}
+        type="password"
+        autoComplete="off"
+        placeholder={masked ?? "Cole o token aqui"}
+      />
+      <p className="text-xs text-muted-foreground">
+        {masked ? "Salvo — deixe em branco para manter." : "Nenhum token salvo ainda."}
+      </p>
     </div>
   );
 }

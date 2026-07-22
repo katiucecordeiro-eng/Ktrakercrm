@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { fetchMetaInsights } from "@/lib/meta/marketing-api";
+import { decryptSecret } from "@/lib/crypto/secrets";
 import type { Offer } from "@/lib/types/offer";
 
 // Aceita tanto o client com service role (cron) quanto o client
@@ -15,6 +16,13 @@ export type OfferSyncResult = {
   error?: string;
 };
 
+// Token por oferta (colado no formulário) com fallback para o antigo env
+// var global — mantém compatibilidade para quem configurou antes desta
+// mudança.
+export function resolveMetaAdsToken(offer: Offer): string | null {
+  return decryptSecret(offer.meta_ads_token) ?? process.env.META_MARKETING_API_ACCESS_TOKEN ?? null;
+}
+
 export async function syncOfferAdSpend(
   supabase: AnySupabaseClient,
   offer: Offer,
@@ -25,10 +33,20 @@ export async function syncOfferAdSpend(
     return { offer_id: offer.id, offer_name: offer.name, skipped: true };
   }
 
+  const accessToken = resolveMetaAdsToken(offer);
+  if (!accessToken) {
+    return {
+      offer_id: offer.id,
+      offer_name: offer.name,
+      error: "Token da Marketing API não configurado para esta oferta",
+    };
+  }
+
   const { rows, error } = await fetchMetaInsights({
     adAccountId: offer.meta_ad_account_id,
     since,
     until,
+    accessToken,
   });
 
   if (rows.length > 0) {

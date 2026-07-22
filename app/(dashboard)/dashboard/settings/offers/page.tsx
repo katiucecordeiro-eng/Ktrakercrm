@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { maskSecret } from "@/lib/crypto/secrets";
 import type { Offer } from "@/lib/types/offer";
 import { OfferFormDialog } from "./offer-form-dialog";
 import { InstallSnippetDialog } from "./install-snippet-dialog";
@@ -79,36 +80,45 @@ export default async function OffersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {offers.map((offer) => (
-                  <TableRow key={offer.id}>
-                    <TableCell className="font-medium">{offer.name}</TableCell>
-                    <TableCell className="font-mono-nums text-muted-foreground">
-                      {offer.slug}
-                    </TableCell>
-                    <TableCell>{offer.domain || "—"}</TableCell>
-                    <TableCell className="font-mono-nums">
-                      {offer.meta_pixel_id || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={offer.active ? "default" : "secondary"}>
-                        {offer.active ? "Ativa" : "Inativa"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="flex justify-end gap-2 text-right">
-                      <InstallSnippetDialog slug={offer.slug} />
-                      <SyncAdSpendDialog offerId={offer.id} />
-                      <ConnectionTestDialog offerId={offer.id} />
-                      <OfferFormDialog
-                        offer={offer}
-                        trigger={
-                          <Button variant="outline" size="sm">
-                            <Pencil /> Editar
-                          </Button>
-                        }
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {offers.map((offer) => {
+                  const { meta_capi_token, meta_ads_token, ga4_api_secret, ...safeOffer } = offer;
+                  const maskedSecrets = {
+                    metaCapiToken: maskSecret(meta_capi_token),
+                    metaAdsToken: maskSecret(meta_ads_token),
+                    ga4ApiSecret: maskSecret(ga4_api_secret),
+                  };
+                  return (
+                    <TableRow key={offer.id}>
+                      <TableCell className="font-medium">{offer.name}</TableCell>
+                      <TableCell className="font-mono-nums text-muted-foreground">
+                        {offer.slug}
+                      </TableCell>
+                      <TableCell>{offer.domain || "—"}</TableCell>
+                      <TableCell className="font-mono-nums">
+                        {offer.meta_pixel_id || "—"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={offer.active ? "default" : "secondary"}>
+                          {offer.active ? "Ativa" : "Inativa"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="flex justify-end gap-2 text-right">
+                        <InstallSnippetDialog slug={offer.slug} />
+                        <SyncAdSpendDialog offerId={offer.id} />
+                        <ConnectionTestDialog offerId={offer.id} />
+                        <OfferFormDialog
+                          offer={safeOffer}
+                          maskedSecrets={maskedSecrets}
+                          trigger={
+                            <Button variant="outline" size="sm">
+                              <Pencil /> Editar
+                            </Button>
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           ) : (

@@ -51,14 +51,19 @@ Arquitetura, convenções e roadmap completo estão em [`CLAUDE.md`](./CLAUDE.md
 
 ## Instalar o tracking numa página de vendas
 
-1. Cadastre a oferta em `/dashboard/settings/offers` (nome, slug, domínio,
-   Pixel Meta, GA4).
-2. Clique em "Snippet" na linha da oferta, copie o `<script>` e cole antes
+1. Defina `SECRETS_ENCRYPTION_KEY` no `.env.local`/Vercel (uma vez só, veja
+   `.env.example`) — sem ela, os campos de token do formulário de oferta
+   não conseguem salvar nada.
+2. Cadastre a oferta em `/dashboard/settings/offers` (nome, slug, domínio,
+   Pixel Meta). No campo "Token CAPI da Meta", cole o token gerado no
+   Meta Events Manager/Business Settings → Conversions API — ele é
+   salvo criptografado no banco, não precisa de env var.
+3. Clique em "Snippet" na linha da oferta, copie o `<script>` e cole antes
    do fechamento de `</body>` na página de vendas.
-3. Links de checkout Hotmart na página são reescritos automaticamente com
+4. Links de checkout Hotmart na página são reescritos automaticamente com
    `sck`/`src`. Para eventos manuais (ex. clique em "Comprar" customizado),
    use `window.trk('AddToCart', { value: 97, currency: 'BRL' })` no `onclick`.
-4. Para validar no Gerenciador de Eventos da Meta, defina
+5. Para validar no Gerenciador de Eventos da Meta, defina
    `META_TEST_EVENT_CODE_<SLUG>` no `.env.local`/Vercel (veja `.env.example`).
 
 ## Configurar o webhook da Hotmart
@@ -102,10 +107,12 @@ consulta de 1 dia à Marketing API.
 ## Sincronizar gasto de anúncios (Meta Marketing API)
 
 1. Gere um token de longa duração da Marketing API (com permissão
-   `ads_read` na conta de anúncio) e defina
-   `META_MARKETING_API_ACCESS_TOKEN` no `.env.local`/Vercel.
+   `ads_read` na conta de anúncio).
 2. Em cada oferta, preencha o campo "Meta Ad Account ID" (com ou sem
-   prefixo `act_`).
+   prefixo `act_`) e cole o token no campo "Token da Marketing API" —
+   também salvo criptografado no banco, um por oferta (não precisa mais
+   de env var global; `META_MARKETING_API_ACCESS_TOKEN` no `.env.example`
+   agora é só um fallback legado).
 3. O cron (`/api/cron/meta-spend`, configurado em `vercel.json`)
    resincroniza os últimos 3 dias, 1x por dia, automaticamente na Vercel.
    Para importar um período maior de uma vez, use o botão "Sincronizar

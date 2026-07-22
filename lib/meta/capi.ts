@@ -1,4 +1,5 @@
 import { sha256, normalizePhone } from "@/lib/crypto/hash";
+import { decryptSecret } from "@/lib/crypto/secrets";
 import { postWithRetry, type SendResult } from "@/lib/utils/fetch-retry";
 import type { Offer } from "@/lib/types/offer";
 
@@ -29,15 +30,15 @@ export async function sendMetaEvent(
 ): Promise<SendResult | { status: "skipped"; response: unknown }> {
   const { offer } = params;
 
-  if (!offer.meta_pixel_id || !offer.meta_capi_token_ref) {
-    return { status: "skipped", response: { reason: "Oferta sem Pixel ID ou token CAPI configurado" } };
+  if (!offer.meta_pixel_id) {
+    return { status: "skipped", response: { reason: "Oferta sem Pixel ID configurado" } };
   }
 
-  const token = process.env[offer.meta_capi_token_ref];
+  const token = decryptSecret(offer.meta_capi_token);
   if (!token) {
     return {
       status: "skipped",
-      response: { reason: `Env var ${offer.meta_capi_token_ref} não definida` },
+      response: { reason: "Token CAPI não configurado para esta oferta" },
     };
   }
 

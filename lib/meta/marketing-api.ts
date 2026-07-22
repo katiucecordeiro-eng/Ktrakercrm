@@ -25,10 +25,11 @@ export async function fetchMetaInsights(params: {
   adAccountId: string;
   since: string;
   until: string;
+  accessToken: string;
 }): Promise<MetaInsightsResult> {
-  const token = process.env.META_MARKETING_API_ACCESS_TOKEN;
+  const token = params.accessToken;
   if (!token) {
-    return { rows: [], error: "META_MARKETING_API_ACCESS_TOKEN não definida" };
+    return { rows: [], error: "Token da Marketing API não configurado para esta oferta" };
   }
 
   const fields = [
