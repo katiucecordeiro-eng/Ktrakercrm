@@ -107,7 +107,7 @@ consulta de 1 dia à Marketing API.
 2. Em cada oferta, preencha o campo "Meta Ad Account ID" (com ou sem
    prefixo `act_`).
 3. O cron (`/api/cron/meta-spend`, configurado em `vercel.json`)
-   resincroniza os últimos 3 dias a cada hora automaticamente na Vercel.
+   resincroniza os últimos 3 dias, 1x por dia, automaticamente na Vercel.
    Para importar um período maior de uma vez, use o botão "Sincronizar
    gasto" na linha da oferta em Configurações.
 4. Defina `CRON_SECRET` no `.env.local`/Vercel para proteger o endpoint do
@@ -118,14 +118,19 @@ consulta de 1 dia à Marketing API.
 1. Importe o repositório em [vercel.com/new](https://vercel.com/new).
 2. Em Settings → Environment Variables, adicione as mesmas variáveis do
    `.env.local` (Production e Preview).
-3. Deploy. O cron de gasto (`vercel.json`) é ativado automaticamente — no
-   plano Hobby a Vercel executa 1x/dia mesmo com o schedule de 1h.
+3. Deploy. **Atenção ao plano Hobby:** o cron em `vercel.json` precisa
+   rodar no máximo 1x/dia — um schedule mais frequente (ex. de hora em
+   hora) faz a Vercel **recusar o deploy inteiro**, não só o cron. Já está
+   configurado para `0 9 * * *` (1x/dia); só aumente a frequência se
+   migrar para o plano Pro.
 4. **Troubleshooting**: se a página não carregar depois de um merge/push,
    confira em Deployments se existe um build com o commit mais recente de
    `main` (não um "Redeploy" de um commit antigo — isso reconstrói o
-   mesmo código velho, não o atual). Se não aparecer nenhum deployment
-   novo após um push em `main`, o Git integration está desconectado —
-   revise em Settings → Git.
+   mesmo código velho, não o atual). Se o build falhar, abra o Build Log
+   antes de suspeitar de env vars — a causa mais comum costuma aparecer
+   ali (ex.: o limite de cron do Hobby). Se não aparecer nenhum
+   deployment novo após um push em `main`, o Git integration está
+   desconectado — revise em Settings → Git.
 
 ## Comandos
 
