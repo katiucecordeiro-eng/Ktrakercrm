@@ -1,10 +1,15 @@
 // Cliente da API de Vendas da Hotmart, usado só para o backfill manual de
 // vendas retroativas (Configurações → Ofertas → "Sincronizar vendas
-// Hotmart"). Igual ao webhook, o formato exato da resposta não pôde ser
-// confirmado contra a documentação ao vivo neste ambiente — os itens
-// retornados usam os mesmos caminhos (`purchase.*`, `buyer.*`, `product.*`)
-// dos extratores de `lib/hotmart/extract.ts`, reaproveitados aqui. O
-// payload bruto de cada item fica em `sales.raw_payload` para conferência.
+// Hotmart"). Endpoint e query params confirmados contra a documentação
+// oficial (developers.hotmart.com/docs/pt-BR/v1/sales/sales-history/):
+// product_id é `long` (7 dígitos — não o código do link de checkout),
+// start_date/end_date em milissegundos, max_results/page_token pra
+// paginação. O formato exato dos ITENS da resposta (nomes de campo dentro
+// de cada venda) não pôde ser confirmado contra uma resposta real neste
+// ambiente — os extratores assumem os mesmos caminhos (`purchase.*`,
+// `buyer.*`, `product.*`) do webhook, reaproveitados de
+// `lib/hotmart/extract.ts`. O payload bruto de cada item fica em
+// `sales.raw_payload` para conferência caso algum campo não bata.
 
 const TOKEN_URL = "https://api-sec-vlc.hotmart.com/security/oauth/token";
 const SALES_HISTORY_URL = "https://developers.hotmart.com/payments/api/v1/sales/history";
@@ -113,7 +118,10 @@ export async function fetchHotmartSalesHistory(params: {
   if (params.pageToken) url.searchParams.set("page_token", params.pageToken);
 
   const { ok, status, json, error } = await safeFetchJson(url.toString(), {
-    headers: { Authorization: `Bearer ${params.accessToken}` },
+    headers: {
+      Authorization: `Bearer ${params.accessToken}`,
+      "Content-Type": "application/json",
+    },
   });
   if (error) return { items: [], nextPageToken: null, error };
 
