@@ -6,6 +6,7 @@ import { OfferSwitcher } from "@/components/layout/offer-switcher";
 import { LiveIndicator } from "@/components/layout/live-indicator";
 import { MobileSidebarProvider } from "@/components/layout/mobile-sidebar-context";
 import { MobileMenuButton } from "@/components/layout/mobile-menu-button";
+import { AutoRefresh } from "@/components/layout/auto-refresh";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Offer } from "@/lib/types/offer";
@@ -34,6 +35,7 @@ export default async function DashboardLayout({
 
   return (
     <MobileSidebarProvider>
+      {configured ? <AutoRefresh /> : null}
       <div className="flex h-screen w-full overflow-hidden">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">

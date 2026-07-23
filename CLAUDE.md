@@ -220,6 +220,12 @@ deduplicação client/server na Meta.
   visível).
 - Sem Supabase configurado, a Visão Geral cai no aviso padrão em vez de
   tentar renderizar os gráficos (mesma convenção das sprints anteriores).
+- **Atualização automática**: `components/layout/auto-refresh.tsx`
+  (montado no layout do dashboard, só quando Supabase está configurado)
+  chama `router.refresh()` a cada 30s e também quando a aba volta a ficar
+  visível/em foco — refaz o fetch dos Server Components da rota atual
+  (KPIs, funil, gráficos, tabelas) sem precisar de F5 manual. Cobre tudo
+  que não é Realtime (só o log de eventos ao vivo usa Realtime de fato).
 - **Vendas por produto** (`getSalesByProduct` em `queries.ts` +
   `product-sales-chart.tsx`): agrupa `sales` (status `approved`, no
   período) por `product_id`, mostrando valor bruto e % de participação —
