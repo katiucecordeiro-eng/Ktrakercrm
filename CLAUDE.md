@@ -253,6 +253,15 @@ recebe eventos novos, nunca histórico).
   visível/em foco — refaz o fetch dos Server Components da rota atual
   (KPIs, funil, gráficos, tabelas) sem precisar de F5 manual. Cobre tudo
   que não é Realtime (só o log de eventos ao vivo usa Realtime de fato).
+  **Importante**: isso só relê o banco — vendas/eventos da Hotmart mudam
+  em tempo real (webhook), mas gasto/cliques/impressões da Meta só mudam
+  quando alguém sincroniza de fato com a Marketing API.
+- **Botão "Atualizar" manual**: ao lado do seletor de período na Visão
+  Geral (`refresh-button.tsx` + `refreshDashboardDataAction` em
+  `refresh-actions.ts`). Diferente do auto-refresh, esse dispara de
+  verdade um `syncAllOffers` (mesma função do cron) pros últimos 3 dias de
+  todas as ofertas ativas antes de revalidar a página — por isso ele
+  "atualiza e sincroniza tudo" como pedido, não só reler o banco.
 - **Vendas por produto** (`getSalesByProduct` em `queries.ts` +
   `product-sales-chart.tsx`): agrupa `sales` (status `approved`, no
   período) por `product_id`, mostrando valor bruto e % de participação —

@@ -65,7 +65,14 @@ export async function getHotmartAccessToken(): Promise<TokenResult> {
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("client_secret", clientSecret);
 
-  const { ok, status, json, error } = await safeFetchJson(url.toString(), { method: "POST" });
+  // Além dos parâmetros na URL, o endpoint de token da Hotmart exige o
+  // par client_id:client_secret também via Basic Auth — sem o header, ele
+  // responde 401 mesmo com credenciais corretas.
+  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const { ok, status, json, error } = await safeFetchJson(url.toString(), {
+    method: "POST",
+    headers: { Authorization: `Basic ${basicAuth}` },
+  });
   if (error) return { error };
 
   if (!ok) {

@@ -1,13 +1,12 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { refreshDashboardDataAction } from "../refresh-actions";
 
 export function RefreshButton() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -16,10 +15,10 @@ export function RefreshButton() {
       variant="outline"
       size="sm"
       disabled={isPending}
-      onClick={() => startTransition(() => router.refresh())}
+      onClick={() => startTransition(async () => { await refreshDashboardDataAction(); })}
     >
       <RefreshCw className={isPending ? "animate-spin" : ""} />
-      Atualizar
+      {isPending ? "Atualizando..." : "Atualizar"}
     </Button>
   );
 }
