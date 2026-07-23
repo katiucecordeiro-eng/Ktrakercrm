@@ -55,15 +55,19 @@ async function resolveOffer(supabase: SupabaseAdmin, productId: string): Promise
   return (data as Offer | null) ?? null;
 }
 
-async function handlePurchaseEvent(supabase: SupabaseAdmin, data: Json, status: string) {
+async function handlePurchaseEvent(
+  supabase: SupabaseAdmin,
+  data: Json,
+  status: string,
+): Promise<string> {
   const productId = extractProductId(data);
-  if (!productId) return;
+  if (!productId) return "no_product_id";
 
   const offer = await resolveOffer(supabase, productId);
-  if (!offer) return;
+  if (!offer) return "no_offer_match";
 
   const transactionId = extractTransactionId(data);
-  if (!transactionId) return;
+  if (!transactionId) return "no_transaction_id";
 
   const buyer = extractBuyer(data);
   const sck = extractSck(data);
@@ -154,12 +158,16 @@ async function handlePurchaseEvent(supabase: SupabaseAdmin, data: Json, status: 
       }
     });
   }
+
+  return "processed";
 }
 
-async function handleCartAbandonment(supabase: SupabaseAdmin, data: Json) {
+async function handleCartAbandonment(supabase: SupabaseAdmin, data: Json): Promise<string> {
   const productId = extractProductId(data);
-  const offer = productId ? await resolveOffer(supabase, productId) : null;
-  if (!offer) return;
+  if (!productId) return "no_product_id";
+
+  const offer = await resolveOffer(supabase, productId);
+  if (!offer) return "no_offer_match";
 
   const lead = extractCartAbandonmentLead(data);
   const sck = extractSck(data);
@@ -175,6 +183,8 @@ async function handleCartAbandonment(supabase: SupabaseAdmin, data: Json) {
     phone: lead.phone,
     source: "hotmart_cart_abandonment",
   });
+
+  return "processed";
 }
 
 export async function POST(request: Request) {
@@ -216,20 +226,26 @@ export async function POST(request: Request) {
 
   try {
     const data = payload.data as Json;
+    let resultStatus: string;
 
     if (payload.event === "PURCHASE_OUT_OF_SHOPPING_CART") {
-      await handleCartAbandonment(supabase, data);
+      resultStatus = await handleCartAbandonment(supabase, data);
     } else {
       const status = PURCHASE_EVENT_STATUS[payload.event];
       if (status) {
-        await handlePurchaseEvent(supabase, data, status);
+        resultStatus = await handlePurchaseEvent(supabase, data, status);
       } else {
         await logWebhook(supabase, payload, "ignored_event");
         return NextResponse.json({ ok: true });
       }
     }
 
-    await logWebhook(supabase, payload, "processed");
+    // "processed" é sucesso de verdade; qualquer outro valor (no_product_id,
+    // no_offer_match, no_transaction_id) indica que o webhook chegou mas
+    // nada foi gravado — antes isso era logado como "processed" mesmo
+    // assim, mascarando vendas reais que caíam sem oferta correspondente
+    // (ex.: product.id não bate com nenhum offers.hotmart_product_ids).
+    await logWebhook(supabase, payload, resultStatus);
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[api/webhooks/hotmart] erro inesperado", error);
