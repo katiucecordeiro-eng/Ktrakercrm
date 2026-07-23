@@ -42,10 +42,10 @@ select
   coalesce(sp.spend, 0) as spend,
   coalesce(sp.clicks, 0) as clicks,
   coalesce(sp.impressions, 0) as impressions,
-  coalesce(sp.reach, 0) as reach,
-  sp.frequency as frequency,
   coalesce(sb.revenue, 0) as revenue,
-  coalesce(sb.sales_count, 0) as sales_count
+  coalesce(sb.sales_count, 0) as sales_count,
+  coalesce(sp.reach, 0) as reach,
+  sp.frequency as frequency
 from keys k
 left join spend sp
   on sp.offer_id = k.offer_id and sp.date = k.date and sp.campaign_id = k.campaign_id
