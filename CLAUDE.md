@@ -76,9 +76,27 @@ deduplicação client/server na Meta.
   automático (+ `Scroll50`/`Scroll90` e `PageDuration` no unload) e expõe
   `window.trk(eventName, customData)` / `window.trk.lastEventId`. Envia via
   `navigator.sendBeacon` (fallback `fetch(..., keepalive: true)`); nunca
-  lança exceção que quebre a página de vendas.
+  lança exceção que quebre a página de vendas. **Modo debug** (opt-in via
+  `?ktrk_debug=1` na URL, persiste em `localStorage`): troca o
+  `sendBeacon` fire-and-forget por `fetch` com leitura da resposta e loga
+  no console cada evento aceito/rejeitado — sem isso, um 404 do servidor
+  (ex. oferta inativa) é completamente invisível no navegador, já que
+  `sendBeacon` nunca expõe a resposta. Também avisa distintamente quando
+  `document.currentScript` é `null` (script injetado via JS/innerHTML em
+  vez de tag HTML estática — quebra a leitura do `data-offer`).
+- **Diagnóstico de rastreamento** (`connection-test-dialog.tsx` +
+  `track-test-actions.ts`): dispara um evento sintético (`DiagnosticPing`,
+  fora da lista de eventos padrão — não polui funil/KPIs) direto no
+  `/api/track` da própria oferta, pelo mesmo caminho que o `track.js` usa,
+  com o slug editável (pra comparar contra o `data-offer` real da página).
+  Existe porque um 404 de "oferta não encontrada" no tracking real é
+  silencioso (o beacon nunca lê a resposta) — esse botão testa o mesmo
+  caminho e mostra o resultado na tela, sem precisar de acesso ao banco ou
+  à página ao vivo.
 - `app/api/track/route.ts`: valida o payload (Zod), resolve a oferta pelo
-  `offer_slug`, faz upsert de `visitor` (first-touch preservado — só
+  `offer_slug` (`ilike`, case-insensitive — evita que uma diferença de
+  maiúscula/minúscula entre o `data-offer` e `offers.slug` derrube o
+  evento sem nenhum aviso), faz upsert de `visitor` (first-touch preservado — só
   atualiza `last_seen_at` e completa `fbp`/`fbc`/`ga_client_id` se
   estavam vazios) e insere o `event`. Responde rápido e processa o envio
   para Meta CAPI + GA4 MP depois, via `after()` do `next/server`, sem

@@ -109,7 +109,7 @@ export default async function OffersPage() {
                         <SyncAdSpendDialog offerId={offer.id} />
                         <AccountSpendDialog offerId={offer.id} />
                         <HotmartSyncDialog offerId={offer.id} />
-                        <ConnectionTestDialog offerId={offer.id} />
+                        <ConnectionTestDialog offerId={offer.id} slug={offer.slug} />
                         <OfferFormDialog
                           offer={safeOffer}
                           maskedSecrets={maskedSecrets}

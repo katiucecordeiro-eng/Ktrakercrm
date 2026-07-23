@@ -5,10 +5,33 @@
 (function () {
   "use strict";
 
+  // ── modo debug (opt-in via ?ktrk_debug=1 na URL ou localStorage) ─────
+  // Só ativa logs extras no console; não muda nada do comportamento em
+  // produção quando desligado.
+  var DEBUG = false;
+  try {
+    if (new URLSearchParams(window.location.search).get("ktrk_debug") === "1") {
+      localStorage.setItem("ktrk_debug", "1");
+    }
+    DEBUG = localStorage.getItem("ktrk_debug") === "1";
+  } catch (e) {
+    /* localStorage indisponível — segue sem debug */
+  }
+
   var scriptEl = document.currentScript;
-  var OFFER = scriptEl ? scriptEl.getAttribute("data-offer") : null;
+
+  if (!scriptEl) {
+    console.warn(
+      "[ktracker] document.currentScript é null — o <script> provavelmente foi " +
+        "injetado via JavaScript/innerHTML em vez de estar no HTML estático da " +
+        "página. Nesse caso o rastreamento não consegue ler o atributo data-offer.",
+    );
+    return;
+  }
+
+  var OFFER = scriptEl.getAttribute("data-offer");
   var API_URL =
-    (scriptEl && scriptEl.getAttribute("data-api")) ||
+    scriptEl.getAttribute("data-api") ||
     (function () {
       try {
         return new URL("/api/track", scriptEl.src).toString();
@@ -21,6 +44,8 @@
     console.warn("[ktracker] atributo data-offer não encontrado no <script>");
     return;
   }
+
+  if (DEBUG) console.info("[ktracker] modo debug ativo — offer:", OFFER, "api:", API_URL);
 
   // ── utilidades ──────────────────────────────────────────────────────
   function uuid() {
@@ -149,6 +174,34 @@
     };
 
     var body = JSON.stringify(payload);
+
+    if (DEBUG) {
+      console.info("[ktracker] enviando", eventName, payload);
+      fetch(API_URL, {
+        method: "POST",
+        body: body,
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+      })
+        .then(function (res) {
+          if (res.ok) {
+            console.info("[ktracker] " + eventName + " aceito (HTTP " + res.status + ")");
+          } else {
+            res.json().then(
+              function (json) {
+                console.error("[ktracker] " + eventName + " REJEITADO (HTTP " + res.status + ")", json);
+              },
+              function () {
+                console.error("[ktracker] " + eventName + " REJEITADO (HTTP " + res.status + ")");
+              },
+            );
+          }
+        })
+        .catch(function (err) {
+          console.error("[ktracker] " + eventName + " falha de rede", err);
+        });
+      return eventId;
+    }
 
     if (navigator.sendBeacon) {
       var blob = new Blob([body], { type: "text/plain" });

@@ -48,15 +48,20 @@ export async function POST(request: Request) {
   try {
     const supabase = createAdminClient();
 
+    // ilike (case-insensitive) — evita que um data-offer com maiúscula
+    // diferente do slug cadastrado derrube o evento silenciosamente (o
+    // beacon do track.js nunca lê a resposta, então um 404 aqui é invisível
+    // no navegador).
     const { data: offerRow } = await supabase
       .from("offers")
       .select("*")
-      .eq("slug", input.offer_slug)
+      .ilike("slug", input.offer_slug)
       .eq("active", true)
       .maybeSingle();
     offer = offerRow as Offer | null;
 
     if (!offer) {
+      console.warn("[api/track] offer_not_found", { slug: input.offer_slug, ip });
       return NextResponse.json({ ok: false, error: "offer_not_found" }, { status: 404 });
     }
 
