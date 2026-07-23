@@ -118,8 +118,17 @@ export async function fetchHotmartSalesHistory(params: {
   if (error) return { items: [], nextPageToken: null, error };
 
   if (!ok) {
-    const message = (json.error_description as string) ?? (json.message as string) ?? `HTTP ${status}`;
-    return { items: [], nextPageToken: null, error: `Falha ao buscar vendas (produto ${params.productId}): ${message}` };
+    const message =
+      (json.error_description as string) ??
+      (json.message as string) ??
+      (json.error as string) ??
+      `HTTP ${status}`;
+    const queryDebug = url.search;
+    return {
+      items: [],
+      nextPageToken: null,
+      error: `Falha ao buscar vendas (produto ${params.productId}): ${message} [query: ${queryDebug}]`,
+    };
   }
 
   const items = (json.items as HotmartSalesHistoryItem[] | undefined) ?? [];
