@@ -243,7 +243,22 @@ recebe eventos novos, nunca histórico).
 - Tabela de campanhas é expansível (campanha → conjunto → anúncio) via
   estado no client (`campaign-table.tsx`); badge verde quando ROAS ≥ 2x
   (`ROAS_THRESHOLD`, ainda uma constante — vira configurável num ajuste
-  futuro).
+  futuro). Linhas de criativo (anúncio) têm fundo verde-claro
+  (`bg-accent/10`) pra se destacar visualmente dos conjuntos (cinza).
+  Botão "Mais colunas" revela Impressões/Alcance/Frequência/CPC/CPM
+  (migration `0007` adiciona `reach`/`frequency` em `ad_spend`, buscados
+  na Meta Insights junto com spend/impressions/clicks). **Frequência é
+  recalculada como impressões/alcance** em vez de somar/tirar média das
+  frequências diárias (evita distorcer o valor); **alcance somado no
+  período é uma aproximação** — a Meta não deduplica alcance entre dias
+  somados, só dentro de um único `time_range` por chamada.
+- **Atribuição de venda a campanha depende 100% da convenção de UTM**
+  (`utm_campaign`/`utm_medium`/`utm_content` = `{{id}}--{{name}}`, ver
+  seção acima). Se os anúncios reais não usarem exatamente esse formato,
+  `sales.campaign_id`/`adset_id`/`ad_id` ficam nulos e a linha da campanha
+  mostra gasto sincronizado mas "Vendas: 0"/"CPA: —", mesmo com vendas
+  reais no período (elas só não têm como ser somadas àquela campanha
+  específica — continuam contando nos KPIs gerais/vendas por produto).
 - **Log de eventos ao vivo**: `live-event-log.tsx` assina
   `postgres_changes` (INSERT em `events`) via Supabase Realtime. Exige
   `alter publication supabase_realtime add table events;` (migration

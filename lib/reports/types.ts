@@ -58,9 +58,13 @@ export type CampaignAdRow = {
   salesCount: number;
   clicks: number;
   impressions: number;
+  reach: number;
   roas: number | null;
   cpa: number | null;
   ctr: number | null;
+  cpc: number | null;
+  cpm: number | null;
+  frequency: number | null;
 };
 
 export type CampaignRow = CampaignAdRow & {

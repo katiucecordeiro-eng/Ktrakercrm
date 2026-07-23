@@ -64,6 +64,8 @@ export async function syncOfferAdSpend(
         spend: row.spend,
         impressions: row.impressions,
         clicks: row.clicks,
+        reach: row.reach,
+        frequency: row.frequency,
         cpc: row.clicks > 0 ? row.spend / row.clicks : null,
         cpm: row.impressions > 0 ? (row.spend / row.impressions) * 1000 : null,
         synced_at: new Date().toISOString(),

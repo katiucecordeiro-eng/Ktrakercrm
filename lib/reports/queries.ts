@@ -282,6 +282,7 @@ type CampaignPerformanceRow = {
   spend: number;
   clicks: number;
   impressions: number;
+  reach: number;
   revenue: number;
   sales_count: number;
 };
@@ -292,11 +293,19 @@ function computeAdMetrics(base: {
   salesCount: number;
   clicks: number;
   impressions: number;
+  reach: number;
 }) {
   return {
     roas: base.spend > 0 ? base.revenue / base.spend : null,
     cpa: base.salesCount > 0 ? base.spend / base.salesCount : null,
     ctr: base.impressions > 0 ? (base.clicks / base.impressions) * 100 : null,
+    cpc: base.clicks > 0 ? base.spend / base.clicks : null,
+    cpm: base.impressions > 0 ? (base.spend / base.impressions) * 1000 : null,
+    // Frequência = impressões / alcance (definição da própria Meta) —
+    // recalculada aqui em vez de somar/tirar média das frequências diárias,
+    // que distorceria o valor. "Alcance" somado no período é uma
+    // aproximação (a Meta não deduplica alcance entre dias).
+    frequency: base.reach > 0 ? base.impressions / base.reach : null,
   };
 }
 
@@ -322,6 +331,7 @@ export async function getCampaignTable(
     salesCount: number;
     clicks: number;
     impressions: number;
+    reach: number;
   };
 
   const campaigns = new Map<string, Acc & { adsets: Map<string, Acc & { name: string; ads: Map<string, Acc> }> }>();
@@ -337,6 +347,7 @@ export async function getCampaignTable(
         salesCount: 0,
         clicks: 0,
         impressions: 0,
+        reach: 0,
         adsets: new Map(),
       });
     }
@@ -346,6 +357,7 @@ export async function getCampaignTable(
     campaign.salesCount += Number(row.sales_count);
     campaign.clicks += Number(row.clicks);
     campaign.impressions += Number(row.impressions);
+    campaign.reach += Number(row.reach);
     if (row.campaign_name) campaign.name = row.campaign_name;
 
     const adsetId = row.adset_id || "sem-conjunto";
@@ -357,6 +369,7 @@ export async function getCampaignTable(
         salesCount: 0,
         clicks: 0,
         impressions: 0,
+        reach: 0,
         ads: new Map(),
       });
     }
@@ -366,6 +379,7 @@ export async function getCampaignTable(
     adset.salesCount += Number(row.sales_count);
     adset.clicks += Number(row.clicks);
     adset.impressions += Number(row.impressions);
+    adset.reach += Number(row.reach);
     if (row.adset_name) adset.name = row.adset_name;
 
     const adId = row.ad_id || "sem-anuncio";
@@ -377,6 +391,7 @@ export async function getCampaignTable(
         salesCount: 0,
         clicks: 0,
         impressions: 0,
+        reach: 0,
       });
     }
     const ad = adset.ads.get(adId)!;
@@ -385,6 +400,7 @@ export async function getCampaignTable(
     ad.salesCount += Number(row.sales_count);
     ad.clicks += Number(row.clicks);
     ad.impressions += Number(row.impressions);
+    ad.reach += Number(row.reach);
     if (row.ad_name) ad.name = row.ad_name;
   }
 

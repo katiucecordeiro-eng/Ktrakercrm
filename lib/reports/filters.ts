@@ -32,7 +32,7 @@ export function parseReportFilters(searchParams: RawSearchParams, offers: Offer[
   const offerSlugParam = param(searchParams, "offer");
   const offer = offerSlugParam ? (offers.find((o) => o.slug === offerSlugParam) ?? null) : null;
 
-  const periodParam = (param(searchParams, "period") ?? "30d") as PeriodPreset;
+  const periodParam = (param(searchParams, "period") ?? "today") as PeriodPreset;
   const now = new Date();
 
   let since: Date;

@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -23,7 +24,15 @@ function RoasBadge({ roas }: { roas: number | null }) {
   return <Badge variant={roas >= ROAS_THRESHOLD ? "default" : "destructive"}>{formatRoas(roas)}</Badge>;
 }
 
-function MetricsCells({ row, currency }: { row: CampaignAdRow; currency: string }) {
+function MetricsCells({
+  row,
+  currency,
+  showMore,
+}: {
+  row: CampaignAdRow;
+  currency: string;
+  showMore: boolean;
+}) {
   return (
     <>
       <TableCell className="font-mono-nums">{formatCurrency(row.spend, currency)}</TableCell>
@@ -36,6 +45,21 @@ function MetricsCells({ row, currency }: { row: CampaignAdRow; currency: string 
         {row.cpa !== null ? formatCurrency(row.cpa, currency) : "—"}
       </TableCell>
       <TableCell className="font-mono-nums">{formatPercent(row.ctr)}</TableCell>
+      {showMore ? (
+        <>
+          <TableCell className="font-mono-nums">{formatNumber(row.impressions)}</TableCell>
+          <TableCell className="font-mono-nums">{formatNumber(row.reach)}</TableCell>
+          <TableCell className="font-mono-nums">
+            {row.frequency !== null ? row.frequency.toFixed(2) : "—"}
+          </TableCell>
+          <TableCell className="font-mono-nums">
+            {row.cpc !== null ? formatCurrency(row.cpc, currency) : "—"}
+          </TableCell>
+          <TableCell className="font-mono-nums">
+            {row.cpm !== null ? formatCurrency(row.cpm, currency) : "—"}
+          </TableCell>
+        </>
+      ) : null}
     </>
   );
 }
@@ -43,6 +67,7 @@ function MetricsCells({ row, currency }: { row: CampaignAdRow; currency: string 
 export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currency: string }) {
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [expandedAdsets, setExpandedAdsets] = useState<Set<string>>(new Set());
+  const [showMore, setShowMore] = useState(false);
 
   function toggleCampaign(id: string) {
     setExpandedCampaigns((prev) => {
@@ -70,12 +95,18 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Campanhas e criativos</CardTitle>
-        <CardDescription>
-          Clique numa campanha para ver conjuntos, e num conjunto para ver os
-          anúncios/criativos. Badge verde: ROAS ≥ {ROAS_THRESHOLD}x.
-        </CardDescription>
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
+        <div>
+          <CardTitle>Campanhas e criativos</CardTitle>
+          <CardDescription>
+            Clique numa campanha para ver conjuntos, e num conjunto para ver os
+            anúncios/criativos (destacados em outra cor). Badge verde: ROAS ≥{" "}
+            {ROAS_THRESHOLD}x.
+          </CardDescription>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowMore((v) => !v)}>
+          {showMore ? "Menos colunas" : "Mais colunas"}
+        </Button>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
@@ -93,6 +124,15 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
                 <TableHead>ROAS</TableHead>
                 <TableHead>CPA</TableHead>
                 <TableHead>CTR</TableHead>
+                {showMore ? (
+                  <>
+                    <TableHead>Impressões</TableHead>
+                    <TableHead>Alcance</TableHead>
+                    <TableHead>Frequência</TableHead>
+                    <TableHead>CPC</TableHead>
+                    <TableHead>CPM</TableHead>
+                  </>
+                ) : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -109,7 +149,7 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
                         )}
                         <span className="max-w-[280px] truncate">{campaign.name}</span>
                       </TableCell>
-                      <MetricsCells row={campaign} currency={currency} />
+                      <MetricsCells row={campaign} currency={currency} showMore={showMore} />
                     </TableRow>
                     {campaignOpen &&
                       campaign.adsets.map((adset) => {
@@ -129,15 +169,18 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
                                 )}
                                 <span className="max-w-[240px] truncate">{adset.name}</span>
                               </TableCell>
-                              <MetricsCells row={adset} currency={currency} />
+                              <MetricsCells row={adset} currency={currency} showMore={showMore} />
                             </TableRow>
                             {adsetOpen &&
                               adset.ads.map((ad) => (
-                                <TableRow key={`${adsetKey}:${ad.id}`} className="bg-surface/30">
+                                <TableRow
+                                  key={`${adsetKey}:${ad.id}`}
+                                  className="bg-accent/10 hover:bg-accent/15"
+                                >
                                   <TableCell className="pl-14 text-muted-foreground">
                                     <span className="max-w-[220px] truncate">{ad.name}</span>
                                   </TableCell>
-                                  <MetricsCells row={ad} currency={currency} />
+                                  <MetricsCells row={ad} currency={currency} showMore={showMore} />
                                 </TableRow>
                               ))}
                           </Fragment>

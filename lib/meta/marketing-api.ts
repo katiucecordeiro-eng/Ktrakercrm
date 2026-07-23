@@ -11,6 +11,8 @@ export type MetaInsightRow = {
   spend: number;
   impressions: number;
   clicks: number;
+  reach: number;
+  frequency: number | null;
 };
 
 type MetaInsightsResult = { rows: MetaInsightRow[]; error?: string };
@@ -42,6 +44,8 @@ export async function fetchMetaInsights(params: {
     "spend",
     "impressions",
     "clicks",
+    "reach",
+    "frequency",
     "date_start",
   ].join(",");
 
@@ -82,6 +86,8 @@ export async function fetchMetaInsights(params: {
           spend: Number(item.spend ?? 0),
           impressions: Number(item.impressions ?? 0),
           clicks: Number(item.clicks ?? 0),
+          reach: Number(item.reach ?? 0),
+          frequency: item.frequency != null ? Number(item.frequency) : null,
         });
       }
 
