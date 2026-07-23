@@ -55,9 +55,13 @@ async function safeFetchJson(
 export async function getHotmartAccessToken(): Promise<TokenResult> {
   const clientId = process.env.HOTMART_CLIENT_ID;
   const clientSecret = process.env.HOTMART_CLIENT_SECRET;
+  const basicToken = process.env.HOTMART_BASIC_TOKEN;
 
   if (!clientId || !clientSecret) {
     return { error: "HOTMART_CLIENT_ID/HOTMART_CLIENT_SECRET não configurados." };
+  }
+  if (!basicToken) {
+    return { error: "HOTMART_BASIC_TOKEN não configurado." };
   }
 
   const url = new URL(TOKEN_URL);
@@ -65,13 +69,15 @@ export async function getHotmartAccessToken(): Promise<TokenResult> {
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("client_secret", clientSecret);
 
-  // Além dos parâmetros na URL, o endpoint de token da Hotmart exige o
-  // par client_id:client_secret também via Basic Auth — sem o header, ele
-  // responde 401 mesmo com credenciais corretas.
-  const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  // O endpoint de token da Hotmart exige o header Authorization com o
+  // valor "Basic" que ela mesma gera na tela de credenciais (Ferramentas →
+  // Manager → Credenciais) — não é simplesmente base64(client_id:client_secret)
+  // calculado por nós, é um terceiro valor pronto que ela fornece. Aceita
+  // colar tanto só o token quanto "Basic <token>" já com o prefixo.
+  const cleanBasicToken = basicToken.replace(/^Basic\s+/i, "");
   const { ok, status, json, error } = await safeFetchJson(url.toString(), {
     method: "POST",
-    headers: { Authorization: `Basic ${basicAuth}` },
+    headers: { Authorization: `Basic ${cleanBasicToken}` },
   });
   if (error) return { error };
 

@@ -88,7 +88,8 @@ trazer vendas que já aconteceram antes disso:
 
 1. Gere um Client ID/Secret em Ferramentas → Manager → Credenciais no
    painel da Hotmart e defina `HOTMART_CLIENT_ID`/`HOTMART_CLIENT_SECRET`
-   no `.env.local`/Vercel.
+   **e também `HOTMART_BASIC_TOKEN`** (o terceiro valor "Basic" mostrado
+   na mesma tela) no `.env.local`/Vercel.
 2. Clique em "Vendas retroativas" na linha da oferta em Configurações,
    escolha o período e confirme. Importa direto na tabela `sales`, sem
    disparar Purchase para Meta/GA4 (evita duplicar conversão e enviar

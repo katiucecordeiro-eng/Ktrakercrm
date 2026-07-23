@@ -151,7 +151,11 @@ recebe eventos novos, nunca histórico).
   (`HOTMART_CLIENT_ID`/`HOTMART_CLIENT_SECRET`, globais — a Hotmart gera um
   Client ID/Secret por conta, não por produto) e pagina o endpoint de
   histórico de vendas por `product_id` (um dos `offers.hotmart_product_ids`
-  por vez).
+  por vez). **O header `Authorization: Basic` do endpoint de token não é
+  `base64(client_id:client_secret)` calculado por nós** — é um terceiro
+  valor que a própria Hotmart mostra na tela de credenciais
+  (`HOTMART_BASIC_TOKEN`); sem ele, o token retorna 401 mesmo com
+  client_id/secret corretos.
 - `lib/hotmart/sync-sales.ts`: reaproveita os mesmos extratores do webhook
   (`lib/hotmart/extract.ts`) para mapear cada item pro formato de `sales`,
   com `resolveVisitor` (`lib/hotmart/resolve-visitor.ts`, compartilhado com
@@ -380,7 +384,7 @@ Ver `.env.example` — documenta cada uma. Resumo:
 | `SUPABASE_SERVICE_ROLE_KEY` | rotas server-only, ignora RLS |
 | `SECRETS_ENCRYPTION_KEY` | criptografa os tokens colados por oferta (Meta CAPI, Marketing API, GA4) — única, gerada uma vez, nunca por oferta |
 | `HOTMART_HOTTOK` | valida o header `hottok` no webhook |
-| `HOTMART_CLIENT_ID` / `HOTMART_CLIENT_SECRET` | API de Vendas da Hotmart, só para o backfill manual de vendas retroativas |
+| `HOTMART_CLIENT_ID` / `HOTMART_CLIENT_SECRET` / `HOTMART_BASIC_TOKEN` | API de Vendas da Hotmart, só para o backfill manual de vendas retroativas — as 3 vêm da mesma tela de credenciais |
 | `META_TEST_EVENT_CODE_<OFERTA>` | validação no Test Events da Meta (ainda por env var, derivada do slug) |
 | `META_MARKETING_API_ACCESS_TOKEN` | fallback legado se uma oferta não tiver `meta_ads_token` próprio configurado |
 | `CRON_SECRET` | protege `/api/cron/meta-spend`; a Vercel injeta o header automaticamente quando definida |
