@@ -16,6 +16,7 @@ import {
 import type { Offer } from "@/lib/types/offer";
 
 import { PeriodSwitcher } from "./_components/period-switcher";
+import { RefreshButton } from "./_components/refresh-button";
 import { KpiCards } from "./_components/kpi-cards";
 import { FunnelChart } from "./_components/funnel-chart";
 import { RevenueChart } from "./_components/revenue-chart";
@@ -85,13 +86,16 @@ export default async function DashboardOverviewPage({
             {selectedOffer ? selectedOffer.name : "Todas as ofertas"}
           </p>
         </div>
-        <Suspense fallback={<div className="h-9 w-[180px]" />}>
-          <PeriodSwitcher
-            period={filters.period}
-            since={filters.since.toISOString().slice(0, 10)}
-            until={filters.until.toISOString().slice(0, 10)}
-          />
-        </Suspense>
+        <div className="flex flex-wrap items-center gap-2">
+          <Suspense fallback={<div className="h-9 w-[180px]" />}>
+            <PeriodSwitcher
+              period={filters.period}
+              since={filters.since.toISOString().slice(0, 10)}
+              until={filters.until.toISOString().slice(0, 10)}
+            />
+          </Suspense>
+          <RefreshButton />
+        </div>
       </div>
 
       <KpiCards kpis={kpis} currency={currency} />
