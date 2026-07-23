@@ -42,8 +42,8 @@ export function SyncAdSpendDialog({ offerId }: { offerId: string }) {
           <DialogTitle>Sincronizar gasto da Meta</DialogTitle>
           <DialogDescription>
             Busca spend/impressões/cliques por campanha, conjunto e anúncio no
-            período informado (backfill manual). O cron automático roda a
-            cada hora e resincroniza os últimos 3 dias.
+            período informado (backfill manual). O cron automático roda 1x por
+            dia e resincroniza os últimos 3 dias.
           </DialogDescription>
         </DialogHeader>
         <form action={formAction} className="flex flex-col gap-4">

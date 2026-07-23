@@ -10,6 +10,7 @@ import {
   getKpis,
   getPaymentBreakdown,
   getRegionRanking,
+  getSalesByProduct,
   getTimeSeries,
 } from "@/lib/reports/queries";
 import type { Offer } from "@/lib/types/offer";
@@ -20,6 +21,7 @@ import { FunnelChart } from "./_components/funnel-chart";
 import { RevenueChart } from "./_components/revenue-chart";
 import { CampaignTable } from "./_components/campaign-table";
 import { PaymentDonut } from "./_components/payment-donut";
+import { ProductSalesChart } from "./_components/product-sales-chart";
 import { HourlyChart } from "./_components/hourly-chart";
 import { RegionRanking } from "./_components/region-ranking";
 import { LiveEventLog } from "./_components/live-event-log";
@@ -63,7 +65,7 @@ export default async function DashboardOverviewPage({
   }
 
   const supabase = await createClient();
-  const [kpis, funnel, timeSeries, campaigns, payments, hourly, regions] = await Promise.all([
+  const [kpis, funnel, timeSeries, campaigns, payments, hourly, regions, products] = await Promise.all([
     getKpis(supabase, filters, offers),
     getFunnel(supabase, filters),
     getTimeSeries(supabase, filters),
@@ -71,6 +73,7 @@ export default async function DashboardOverviewPage({
     getPaymentBreakdown(supabase, filters),
     getHourlyBreakdown(supabase, filters),
     getRegionRanking(supabase, filters),
+    getSalesByProduct(supabase, filters),
   ]);
 
   return (
@@ -97,14 +100,16 @@ export default async function DashboardOverviewPage({
       <CampaignTable rows={campaigns} currency={currency} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ProductSalesChart rows={products} currency={currency} />
         <PaymentDonut rows={payments} currency={currency} />
-        <HourlyChart rows={hourly} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <HourlyChart rows={hourly} />
         <RegionRanking rows={regions} />
-        <LiveEventLog offerId={filters.offerId} offerNames={offerNames} supabaseConfigured={configured} />
       </div>
+
+      <LiveEventLog offerId={filters.offerId} offerNames={offerNames} supabaseConfigured={configured} />
     </div>
   );
 }

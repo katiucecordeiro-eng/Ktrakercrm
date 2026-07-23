@@ -83,3 +83,11 @@ export type RegionRow = {
   city: string | null;
   count: number;
 };
+
+export type ProductSalesRow = {
+  productId: string;
+  productName: string;
+  count: number;
+  value: number;
+  pct: number;
+};

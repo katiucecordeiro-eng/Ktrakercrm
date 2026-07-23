@@ -165,6 +165,22 @@ deduplicação client/server na Meta.
   painel, não expõe uma rota pública de escrita.
 - `offers.meta_ad_account_id` (migration `0002`) guarda o ID da conta de
   anúncio (com ou sem prefixo `act_`) usado nessa sincronização.
+- **Gasto total da conta (nível de conta, não de campanha)**:
+  `lib/meta/account-info.ts#fetchMetaAccountInfo` consulta
+  `act_{id}?fields=currency,amount_spent,balance,spend_cap` na Graph API —
+  totais históricos da conta, não a granularidade diária do
+  `ad_spend`/Insights. Botão "Saldo Meta" em Configurações → Ofertas
+  (`account-spend-dialog.tsx` + `getMetaAccountSpend` em
+  `test-actions.ts`) busca sob demanda (não é persistido em tabela).
+  **Assunção não validada contra uma conta real**: `amount_spent`/`balance`/
+  `spend_cap` costumam vir na Graph API na menor unidade da moeda (ex.
+  centavos) — o código divide por 100, exceto para uma lista conhecida de
+  moedas sem casas decimais (JPY, KRW etc.); confirmar o valor exibido
+  contra o Gerenciador de Anúncios na primeira consulta real. A Graph API
+  não expõe um campo separado de "impostos" da conta — isso só aparece no
+  detalhamento de fatura (Gerenciador de Anúncios → Faturamento), fora do
+  escopo da Marketing API; a tela deixa esse aviso explícito para a
+  usuária.
 
 ### Dashboard (Sprint 5)
 
@@ -204,6 +220,23 @@ deduplicação client/server na Meta.
   visível).
 - Sem Supabase configurado, a Visão Geral cai no aviso padrão em vez de
   tentar renderizar os gráficos (mesma convenção das sprints anteriores).
+- **Vendas por produto** (`getSalesByProduct` em `queries.ts` +
+  `product-sales-chart.tsx`): agrupa `sales` (status `approved`, no
+  período) por `product_id`, mostrando valor bruto e % de participação —
+  direto da tabela `sales`, não de uma view, já que `product_id`/
+  `product_name` vêm do próprio payload da Hotmart por venda (sem
+  depender do catálogo cadastrado na oferta). Cadastrar os produtos em
+  `offers.hotmart_product_ids` (ver "Produtos Hotmart" abaixo) não afeta
+  esse gráfico — ele funciona mesmo sem cadastro prévio.
+
+### Produtos Hotmart da oferta
+
+Campo "Produtos Hotmart" em Configurações → Ofertas
+(`offer-form-dialog.tsx#ProductIdsField`) — chips com adicionar/remover
+por ID (Enter ou vírgula adiciona), em vez do input único de texto separado
+por vírgula original. Continua salvando em `offers.hotmart_product_ids`
+(text[]) sem mudança de schema; usado pelo webhook da Hotmart para
+resolver a oferta a partir de `product.id` (`array.contains`).
 
 ### CRM & polish (Sprint 6)
 

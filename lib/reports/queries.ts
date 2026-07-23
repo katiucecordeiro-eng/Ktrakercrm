@@ -8,6 +8,7 @@ import type {
   HourlyRow,
   KpiSummary,
   PaymentBreakdownRow,
+  ProductSalesRow,
   RegionRow,
   ReportFilters,
   TimeSeriesPoint,
@@ -463,4 +464,42 @@ export async function getRegionRanking(
   }
 
   return Array.from(byRegion.values()).sort((a, b) => b.count - a.count).slice(0, 15);
+}
+
+export async function getSalesByProduct(
+  supabase: SupabaseClient,
+  filters: ReportFilters,
+): Promise<ProductSalesRow[]> {
+  const query = applyOfferFilter(
+    supabase
+      .from("sales")
+      .select("product_id, product_name, gross_value")
+      .eq("status", "approved")
+      .gte("approved_at", filters.since.toISOString())
+      .lte("approved_at", filters.until.toISOString()),
+    filters.offerId,
+  );
+  const { data } = await query;
+
+  const byProduct = new Map<string, { productName: string; count: number; value: number }>();
+  for (const row of (data as { product_id: string | null; product_name: string | null; gross_value: number | null }[] | null) ?? []) {
+    const key = row.product_id || "sem-produto";
+    const existing = byProduct.get(key) ?? { productName: row.product_name || key, count: 0, value: 0 };
+    existing.count += 1;
+    existing.value += Number(row.gross_value ?? 0);
+    if (row.product_name) existing.productName = row.product_name;
+    byProduct.set(key, existing);
+  }
+
+  const totalValue = Array.from(byProduct.values()).reduce((sum, p) => sum + p.value, 0);
+
+  return Array.from(byProduct.entries())
+    .map(([productId, p]) => ({
+      productId,
+      productName: p.productName,
+      count: p.count,
+      value: p.value,
+      pct: totalValue > 0 ? (p.value / totalValue) * 100 : 0,
+    }))
+    .sort((a, b) => b.value - a.value);
 }

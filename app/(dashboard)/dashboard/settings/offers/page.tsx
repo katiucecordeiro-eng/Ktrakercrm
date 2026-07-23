@@ -18,6 +18,7 @@ import type { Offer } from "@/lib/types/offer";
 import { OfferFormDialog } from "./offer-form-dialog";
 import { InstallSnippetDialog } from "./install-snippet-dialog";
 import { SyncAdSpendDialog } from "./sync-ad-spend-dialog";
+import { AccountSpendDialog } from "./account-spend-dialog";
 import { ConnectionTestDialog } from "./connection-test-dialog";
 import { RecentWebhooks } from "./recent-webhooks";
 
@@ -40,7 +41,7 @@ export default async function OffersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold">Ofertas</h1>
           <p className="text-sm text-muted-foreground">
@@ -105,6 +106,7 @@ export default async function OffersPage() {
                       <TableCell className="flex justify-end gap-2 text-right">
                         <InstallSnippetDialog slug={offer.slug} />
                         <SyncAdSpendDialog offerId={offer.id} />
+                        <AccountSpendDialog offerId={offer.id} />
                         <ConnectionTestDialog offerId={offer.id} />
                         <OfferFormDialog
                           offer={safeOffer}

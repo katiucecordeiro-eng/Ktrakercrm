@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type KeyboardEvent } from "react";
+import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -120,12 +121,7 @@ export function OfferFormDialog({
               masked={maskedSecrets?.ga4ApiSecret}
             />
           </div>
-          <Field
-            label="Produtos Hotmart (IDs separados por vírgula)"
-            name="hotmart_product_ids"
-            defaultValue={offer?.hotmart_product_ids?.join(", ") ?? ""}
-            placeholder="123456, 789012"
-          />
+          <ProductIdsField defaultValue={offer?.hotmart_product_ids ?? []} />
           <div className="grid grid-cols-2 gap-4">
             <Field
               label="Moeda"
@@ -190,6 +186,69 @@ function Field({
         placeholder={placeholder}
         required={required}
       />
+    </div>
+  );
+}
+
+function ProductIdsField({ defaultValue }: { defaultValue: string[] }) {
+  const [products, setProducts] = useState<string[]>(defaultValue);
+  const [draft, setDraft] = useState("");
+
+  function addFromDraft() {
+    const id = draft.trim();
+    if (!id) return;
+    setProducts((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setDraft("");
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault();
+      addFromDraft();
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor="hotmart_product_ids_draft">Produtos Hotmart</Label>
+      <div className="flex gap-2">
+        <Input
+          id="hotmart_product_ids_draft"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="ID do produto (Enter para adicionar)"
+        />
+        <Button type="button" variant="secondary" onClick={addFromDraft}>
+          Adicionar
+        </Button>
+      </div>
+      {products.length > 0 ? (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {products.map((id) => (
+            <span
+              key={id}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-mono-nums"
+            >
+              {id}
+              <button
+                type="button"
+                onClick={() => setProducts((prev) => prev.filter((p) => p !== id))}
+                className="text-muted-foreground hover:text-danger"
+                aria-label={`Remover produto ${id}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Cadastre todos os produtos dessa oferta (order bumps, upsells, etc.) para o gráfico
+          de vendas por produto reconhecer cada um.
+        </p>
+      )}
+      <input type="hidden" name="hotmart_product_ids" value={products.join(",")} />
     </div>
   );
 }

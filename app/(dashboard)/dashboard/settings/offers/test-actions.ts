@@ -4,10 +4,13 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { sendMetaEvent } from "@/lib/meta/capi";
 import { fetchMetaInsights } from "@/lib/meta/marketing-api";
+import { fetchMetaAccountInfo, type MetaAccountInfo } from "@/lib/meta/account-info";
 import { resolveMetaAdsToken } from "@/lib/meta/sync-ad-spend";
 import type { Offer } from "@/lib/types/offer";
 
 export type TestActionState = { success?: string; error?: string } | undefined;
+
+export type AccountInfoState = { data?: MetaAccountInfo; error?: string } | undefined;
 
 async function getOffer(offerId: string): Promise<Offer | null> {
   const supabase = await createClient();
@@ -79,4 +82,33 @@ export async function testMarketingApi(
 
   if (error) return { error };
   return { success: `Conectado! ${rows.length} linha(s) de Insights encontradas hoje.` };
+}
+
+export async function getMetaAccountSpend(
+  offerId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _prevState: AccountInfoState,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _formData: FormData,
+): Promise<AccountInfoState> {
+  if (!isSupabaseConfigured()) return { error: "Supabase não configurado." };
+
+  const offer = await getOffer(offerId);
+  if (!offer) return { error: "Oferta não encontrada." };
+  if (!offer.meta_ad_account_id) {
+    return { error: "Cadastre o Meta Ad Account ID desta oferta primeiro." };
+  }
+
+  const accessToken = resolveMetaAdsToken(offer);
+  if (!accessToken) {
+    return { error: "Cadastre o token da Marketing API desta oferta primeiro." };
+  }
+
+  const { data, error } = await fetchMetaAccountInfo({
+    adAccountId: offer.meta_ad_account_id,
+    accessToken,
+  });
+
+  if (error) return { error };
+  return { data };
 }
