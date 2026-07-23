@@ -81,6 +81,19 @@ Arquitetura, convenções e roadmap completo estão em [`CLAUDE.md`](./CLAUDE.md
    caso algum campo não seja reconhecido (ver nota em `CLAUDE.md`). As
    últimas 10 entregas aparecem direto na tela de Configurações → Ofertas.
 
+## Importar vendas retroativas da Hotmart
+
+O webhook só recebe vendas a partir do momento em que é configurado — para
+trazer vendas que já aconteceram antes disso:
+
+1. Gere um Client ID/Secret em Ferramentas → Manager → Credenciais no
+   painel da Hotmart e defina `HOTMART_CLIENT_ID`/`HOTMART_CLIENT_SECRET`
+   no `.env.local`/Vercel.
+2. Clique em "Vendas retroativas" na linha da oferta em Configurações,
+   escolha o período e confirme. Importa direto na tabela `sales`, sem
+   disparar Purchase para Meta/GA4 (evita duplicar conversão e enviar
+   evento fora da janela de tempo aceita pela Meta).
+
 ## CRM / Visitantes
 
 Em `/dashboard/visitors`: tabela pesquisável (nome, e-mail, telefone ou

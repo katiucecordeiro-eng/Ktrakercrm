@@ -19,6 +19,7 @@ import { OfferFormDialog } from "./offer-form-dialog";
 import { InstallSnippetDialog } from "./install-snippet-dialog";
 import { SyncAdSpendDialog } from "./sync-ad-spend-dialog";
 import { AccountSpendDialog } from "./account-spend-dialog";
+import { HotmartSyncDialog } from "./hotmart-sync-dialog";
 import { ConnectionTestDialog } from "./connection-test-dialog";
 import { RecentWebhooks } from "./recent-webhooks";
 
@@ -107,6 +108,7 @@ export default async function OffersPage() {
                         <InstallSnippetDialog slug={offer.slug} />
                         <SyncAdSpendDialog offerId={offer.id} />
                         <AccountSpendDialog offerId={offer.id} />
+                        <HotmartSyncDialog offerId={offer.id} />
                         <ConnectionTestDialog offerId={offer.id} />
                         <OfferFormDialog
                           offer={safeOffer}

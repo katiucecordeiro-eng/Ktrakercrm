@@ -141,6 +141,33 @@ deduplicação client/server na Meta.
 - `PURCHASE_OUT_OF_SHOPPING_CART` (abandono de carrinho) grava um registro
   em `leads` com `source = 'hotmart_cart_abandonment'`, sem criar venda.
 
+### Backfill de vendas retroativas (pós-lançamento)
+
+Botão "Vendas retroativas" em Configurações → Ofertas — importa vendas que
+já existiam na Hotmart antes do webhook estar configurado (o webhook só
+recebe eventos novos, nunca histórico).
+
+- `lib/hotmart/api-client.ts`: autentica via OAuth2 `client_credentials`
+  (`HOTMART_CLIENT_ID`/`HOTMART_CLIENT_SECRET`, globais — a Hotmart gera um
+  Client ID/Secret por conta, não por produto) e pagina o endpoint de
+  histórico de vendas por `product_id` (um dos `offers.hotmart_product_ids`
+  por vez).
+- `lib/hotmart/sync-sales.ts`: reaproveita os mesmos extratores do webhook
+  (`lib/hotmart/extract.ts`) para mapear cada item pro formato de `sales`,
+  com `resolveVisitor` (`lib/hotmart/resolve-visitor.ts`, compartilhado com
+  o webhook) tentando casar por sck/e-mail — a maioria das vendas antigas
+  não vai casar (tracking não existia na época), o que é esperado.
+  **Nunca dispara Purchase para Meta CAPI/GA4**: são vendas antigas, e
+  reenviar duplicaria a conversão (o webhook já disparou na época, se
+  existia) além da Meta rejeitar/penalizar eventos com `event_time` fora
+  da janela de poucos dias aceita pela CAPI.
+- **Mesma ressalva do webhook**: o formato exato da resposta do endpoint de
+  histórico (`SALES_HISTORY_STATUS` em `extract.ts`, campos de
+  `purchase.status`/`approved_date`) não pôde ser confirmado contra a
+  documentação ao vivo neste ambiente — conferir `sales.raw_payload` das
+  primeiras vendas importadas e ajustar os extratores se algum campo não
+  bater.
+
 ### Sincronização de gasto Meta (Sprint 4)
 
 - `app/api/cron/meta-spend/route.ts` (`GET`): a cada execução resincroniza
@@ -344,6 +371,7 @@ Ver `.env.example` — documenta cada uma. Resumo:
 | `SUPABASE_SERVICE_ROLE_KEY` | rotas server-only, ignora RLS |
 | `SECRETS_ENCRYPTION_KEY` | criptografa os tokens colados por oferta (Meta CAPI, Marketing API, GA4) — única, gerada uma vez, nunca por oferta |
 | `HOTMART_HOTTOK` | valida o header `hottok` no webhook |
+| `HOTMART_CLIENT_ID` / `HOTMART_CLIENT_SECRET` | API de Vendas da Hotmart, só para o backfill manual de vendas retroativas |
 | `META_TEST_EVENT_CODE_<OFERTA>` | validação no Test Events da Meta (ainda por env var, derivada do slug) |
 | `META_MARKETING_API_ACCESS_TOKEN` | fallback legado se uma oferta não tiver `meta_ads_token` próprio configurado |
 | `CRON_SECRET` | protege `/api/cron/meta-spend`; a Vercel injeta o header automaticamente quando definida |

@@ -5,6 +5,7 @@ import { hotmartWebhookSchema } from "@/lib/validations/hotmart";
 import { sha256 } from "@/lib/crypto/hash";
 import { sendMetaEvent } from "@/lib/meta/capi";
 import { sendGa4Event } from "@/lib/ga4/measurement-protocol";
+import { resolveVisitor } from "@/lib/hotmart/resolve-visitor";
 import {
   extractSck,
   extractSrc,
@@ -52,39 +53,6 @@ async function resolveOffer(supabase: SupabaseAdmin, productId: string): Promise
     .contains("hotmart_product_ids", [productId])
     .maybeSingle();
   return (data as Offer | null) ?? null;
-}
-
-async function resolveVisitor(
-  supabase: SupabaseAdmin,
-  sck: string | null,
-  buyerEmail: string | null,
-) {
-  if (sck) {
-    const { data } = await supabase.from("visitors").select("*").eq("id", sck).maybeSingle();
-    if (data) return data;
-  }
-
-  if (buyerEmail) {
-    const { data: lead } = await supabase
-      .from("leads")
-      .select("visitor_id")
-      .eq("email", buyerEmail)
-      .not("visitor_id", "is", null)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lead?.visitor_id) {
-      const { data: visitor } = await supabase
-        .from("visitors")
-        .select("*")
-        .eq("id", lead.visitor_id)
-        .maybeSingle();
-      if (visitor) return visitor;
-    }
-  }
-
-  return null;
 }
 
 async function handlePurchaseEvent(supabase: SupabaseAdmin, data: Json, status: string) {

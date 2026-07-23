@@ -111,3 +111,34 @@ export const PURCHASE_EVENT_STATUS: Record<string, string> = {
   PURCHASE_DELAYED: "pending",
   PURCHASE_PROTEST: "chargeback",
 };
+
+// A API de Vendas (histórico) devolve o status em `purchase.status`, com
+// valores diferentes dos nomes de evento do webhook — mapeamento também não
+// validado contra uma resposta real; ajustar se algum status vier como
+// "sem-mapeamento" nos itens importados.
+export const SALES_HISTORY_STATUS: Record<string, string> = {
+  APPROVED: "approved",
+  COMPLETE: "approved",
+  REFUNDED: "refunded",
+  CHARGEBACK: "chargeback",
+  CANCELLED: "canceled",
+  CANCELED: "canceled",
+  PRINTED_BILLET: "pending",
+  BILLET_PRINTED: "pending",
+  WAITING_PAYMENT: "pending",
+  DELAYED: "pending",
+  PROTESTED: "chargeback",
+  EXPIRED: "canceled",
+};
+
+export function extractSalesHistoryStatus(data: Json): string | null {
+  const raw = firstString(data, ["purchase.status"]);
+  if (!raw) return null;
+  return SALES_HISTORY_STATUS[raw.toUpperCase()] ?? null;
+}
+
+export function extractApprovedDate(data: Json): string | null {
+  const value = get(data, "purchase.approved_date") ?? get(data, "purchase.order_date");
+  if (typeof value === "number") return new Date(value).toISOString();
+  return null;
+}
