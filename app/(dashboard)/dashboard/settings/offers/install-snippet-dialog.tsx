@@ -13,13 +13,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://SEUDOMINIO";
+// Sem fallback pra um placeholder tipo "https://SEUDOMINIO" — isso rende
+// no snippet copiável e parece um valor real, mas nunca funciona (não é um
+// domínio de verdade). Sem a env var configurada, a tela avisa em vez de
+// gerar um snippet que engana quem copia sem perceber.
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || null;
 
 export function InstallSnippetDialog({ slug }: { slug: string }) {
   const [copied, setCopied] = useState(false);
-  const snippet = `<script src="${APP_URL}/track.js" data-offer="${slug}" defer></script>`;
+  const snippet = APP_URL ? `<script src="${APP_URL}/track.js" data-offer="${slug}" defer></script>` : null;
 
   async function copy() {
+    if (!snippet) return;
     await navigator.clipboard.writeText(snippet);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
@@ -42,13 +47,25 @@ export function InstallSnippetDialog({ slug }: { slug: string }) {
             <code className="font-mono-nums">src</code>) sozinha.
           </DialogDescription>
         </DialogHeader>
-        <pre className="overflow-x-auto rounded-md border border-border bg-background p-3 text-xs">
-          <code className="font-mono-nums text-accent">{snippet}</code>
-        </pre>
-        <Button onClick={copy} variant="secondary" size="sm" className="self-start">
-          {copied ? <Check /> : <Copy />}
-          {copied ? "Copiado!" : "Copiar"}
-        </Button>
+        {snippet ? (
+          <>
+            <pre className="overflow-x-auto rounded-md border border-border bg-background p-3 text-xs">
+              <code className="font-mono-nums text-accent">{snippet}</code>
+            </pre>
+            <Button onClick={copy} variant="secondary" size="sm" className="self-start">
+              {copied ? <Check /> : <Copy />}
+              {copied ? "Copiado!" : "Copiar"}
+            </Button>
+          </>
+        ) : (
+          <p className="rounded-md border border-danger/40 bg-danger/10 p-3 text-xs text-danger">
+            <strong>NEXT_PUBLIC_APP_URL</strong> não está definida nas variáveis de
+            ambiente da Vercel — não dá pra gerar o snippet certo sem ela.
+            Defina como a URL pública deste painel (ex.:{" "}
+            <code className="font-mono-nums">https://ktrakercrm.vercel.app</code>) e
+            redeploye antes de instalar o rastreamento em qualquer oferta.
+          </p>
+        )}
         <div className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-xs text-muted-foreground">
           <p className="font-medium text-foreground">Onde colar:</p>
           <p>
