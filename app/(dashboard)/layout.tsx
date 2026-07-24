@@ -7,6 +7,7 @@ import { LiveIndicator } from "@/components/layout/live-indicator";
 import { MobileSidebarProvider } from "@/components/layout/mobile-sidebar-context";
 import { MobileMenuButton } from "@/components/layout/mobile-menu-button";
 import { AutoRefresh } from "@/components/layout/auto-refresh";
+import { Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { Offer } from "@/lib/types/offer";
@@ -42,7 +43,7 @@ export default async function DashboardLayout({
           <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface px-3 md:px-6">
             <div className="flex min-w-0 items-center gap-2">
               <MobileMenuButton />
-              <Suspense fallback={<div className="h-9 w-[180px]" />}>
+              <Suspense fallback={<Skeleton className="h-9 w-[180px]" />}>
                 <OfferSwitcher offers={offers} />
               </Suspense>
             </div>

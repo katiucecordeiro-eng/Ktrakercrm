@@ -92,6 +92,22 @@ export function parseReportFilters(searchParams: RawSearchParams, offers: Offer[
   };
 }
 
+// Período imediatamente anterior, com a mesma duração — usado pelos KPIs
+// pra calcular o delta % vs. período anterior. offerId/offerSlug/period
+// preservados; granularidade recalculada porque a duração é idêntica mas
+// não custa garantir.
+export function getPreviousPeriodFilters(filters: ReportFilters): ReportFilters {
+  const durationMs = filters.until.getTime() - filters.since.getTime();
+  const until = new Date(filters.since.getTime() - 1);
+  const since = new Date(until.getTime() - durationMs);
+  return {
+    ...filters,
+    since,
+    until,
+    granularity: pickGranularity(since, until),
+  };
+}
+
 export const PERIOD_LABELS: Record<PeriodPreset, string> = {
   today: "Hoje",
   yesterday: "Ontem",

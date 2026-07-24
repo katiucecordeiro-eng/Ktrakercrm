@@ -472,6 +472,51 @@ contra uma entrega real).
 Cada sprint: apresentar plano → implementar → checklist de testes manuais →
 commit descritivo.
 
+### Redesign visual + funil (pós-lançamento, "Sprint A/B")
+
+Segunda rodada pedida pela usuária: redesign visual + diagnóstico de por
+que o funil ficava zerado. Escopo completo era 6 sprints (A–F); só A
+(visual) e B (funil) foram feitos nesta rodada — C–F (CRM avançado,
+página de campanhas com fallback de UTM, Meta Business Intelligence,
+polish geral) ficam como roteiro para quando a usuária pedir.
+
+- **Funil zerado**: causa raiz era `/api/track` responder 404 quando o
+  slug não batia com nenhuma oferta ativa, mas `track.js` envia via
+  `sendBeacon` (fire-and-forget) — o 404 nunca aparecia em lugar nenhum.
+  Corrigido com match case-insensitive (`ilike`) + modo debug opt-in no
+  `track.js` (`?ktrk_debug=1`) + diagnóstico em Configurações → Ofertas
+  que testa o mesmo caminho do site real. Ver seção "Tracking (Sprint 2)"
+  acima para os detalhes.
+- **KPIs com tendência vs. período anterior**: `getPreviousPeriodFilters`
+  (`lib/reports/filters.ts`) desloca o período pra trás pela mesma
+  duração; `computeKpiDeltas` (`lib/reports/trends.ts`) calcula a
+  variação % genérica sobre todos os campos numéricos de `KpiSummary`.
+  `kpi-cards.tsx` virou Client Component (recebe `kpis`/`previousKpis`
+  já prontos do servidor, mesmo padrão de `RevenueChart`/`CampaignTable`)
+  pra poder usar `useCountUp` (`hooks/use-count-up.ts`) — a animação só
+  conta do zero na primeira renderização; em renders seguintes (inclusive
+  os disparados pelo `AutoRefresh` a cada 30s) anima a partir do valor
+  anterior real, nunca reinicia do zero. **Direção da cor do delta é
+  invertida** (`deltaInvert`) pra métricas de custo (CPA, taxa de
+  reembolso, custo por checkout, vendas reembolsadas) — descer é bom
+  nessas, ao contrário de receita/vendas. Gasto com anúncios é neutro
+  (`deltaNeutral`, sem julgamento de cor) — gastar mais ou menos não é
+  bom/ruim isoladamente. ROAS ≥ 2x ganha borda pulsante
+  (`.animate-glow-pulse` em `globals.css`, keyframe separado do
+  `pulse-live` do indicador AO VIVO).
+- **Funil visual**: `funnel-chart.tsx` virou afunilado de verdade
+  (`clip-path` trapezoidal calculado a partir da largura da etapa atual e
+  da próxima), com badge de conversão colorido por faixa entre etapas
+  (heurística: ≥40% verde, 15–40% âmbar, <15% vermelho — ajustável, não
+  vem de nenhum benchmark) e toggle "Funil"/"Tabela".
+- **Skeleton de loading**: novo `components/ui/skeleton.tsx`
+  (`animate-pulse bg-surface-hover`), usado nos 2 `Suspense fallback`
+  que antes eram `<div>` sem estilo nenhum (`layout.tsx`, `dashboard/page.tsx`).
+- **"Elementos 3D/isométricos" do pedido original não são literais** —
+  substituídos por `.dot-grid` (padrão de pontos em CSS puro,
+  `globals.css`), já que ilustração 3D bespoke exigiria assets de design
+  que não existem no projeto.
+
 ## Identidade visual
 
 Tema dark forte: fundo `#0A0E14`, superfícies `#111722`, bordas `#1E2733`.

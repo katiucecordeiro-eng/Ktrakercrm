@@ -84,6 +84,30 @@ body {
   animation: pulse-live 1.6s ease-in-out infinite;
 }
 
+/* Pulso na borda de cards de destaque (ex. ROAS acima da meta) —
+   keyframe separado do pulse-live, que é reservado pro ponto AO VIVO. */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px rgba(34, 255, 136, 0.25), 0 0 24px -6px rgba(34, 255, 136, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 1px rgba(34, 255, 136, 0.45), 0 0 32px -4px rgba(34, 255, 136, 0.7);
+  }
+}
+
+.animate-glow-pulse {
+  animation: pulse-glow 2.4s ease-in-out infinite;
+}
+
+/* Padrão de pontos decorativo — substitui ilustrações 3D/isométricas
+   bespoke (fora de escopo sem assets de design) por uma textura sutil de
+   grade de pontos, em CSS puro. */
+.dot-grid {
+  background-image: radial-gradient(rgba(230, 235, 242, 0.14) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
 ::selection {
   background: rgba(34, 255, 136, 0.25);
 }

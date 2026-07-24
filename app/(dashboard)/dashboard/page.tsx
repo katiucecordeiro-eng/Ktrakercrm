@@ -2,7 +2,7 @@ import { Suspense } from "react";
 
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { parseReportFilters, type RawSearchParams } from "@/lib/reports/filters";
+import { getPreviousPeriodFilters, parseReportFilters, type RawSearchParams } from "@/lib/reports/filters";
 import {
   getCampaignTable,
   getFunnel,
@@ -14,6 +14,7 @@ import {
   getTimeSeries,
 } from "@/lib/reports/queries";
 import type { Offer } from "@/lib/types/offer";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { PeriodSwitcher } from "./_components/period-switcher";
 import { RefreshButton } from "./_components/refresh-button";
@@ -66,16 +67,19 @@ export default async function DashboardOverviewPage({
   }
 
   const supabase = await createClient();
-  const [kpis, funnel, timeSeries, campaigns, payments, hourly, regions, products] = await Promise.all([
-    getKpis(supabase, filters, offers),
-    getFunnel(supabase, filters),
-    getTimeSeries(supabase, filters),
-    getCampaignTable(supabase, filters),
-    getPaymentBreakdown(supabase, filters),
-    getHourlyBreakdown(supabase, filters),
-    getRegionRanking(supabase, filters),
-    getSalesByProduct(supabase, filters),
-  ]);
+  const previousFilters = getPreviousPeriodFilters(filters);
+  const [kpis, previousKpis, funnel, timeSeries, campaigns, payments, hourly, regions, products] =
+    await Promise.all([
+      getKpis(supabase, filters, offers),
+      getKpis(supabase, previousFilters, offers),
+      getFunnel(supabase, filters),
+      getTimeSeries(supabase, filters),
+      getCampaignTable(supabase, filters),
+      getPaymentBreakdown(supabase, filters),
+      getHourlyBreakdown(supabase, filters),
+      getRegionRanking(supabase, filters),
+      getSalesByProduct(supabase, filters),
+    ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -87,7 +91,7 @@ export default async function DashboardOverviewPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Suspense fallback={<div className="h-9 w-[180px]" />}>
+          <Suspense fallback={<Skeleton className="h-9 w-[180px]" />}>
             <PeriodSwitcher
               period={filters.period}
               since={filters.since.toISOString().slice(0, 10)}
@@ -98,7 +102,7 @@ export default async function DashboardOverviewPage({
         </div>
       </div>
 
-      <KpiCards kpis={kpis} currency={currency} />
+      <KpiCards kpis={kpis} previousKpis={previousKpis} currency={currency} />
       <FunnelChart steps={funnel} />
       <RevenueChart data={timeSeries} currency={currency} />
       <CampaignTable rows={campaigns} currency={currency} />
