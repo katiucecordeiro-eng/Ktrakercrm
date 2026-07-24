@@ -40,7 +40,7 @@ export function Sidebar() {
         )}
       >
         <div className="flex h-14 items-center justify-between border-b border-border px-4">
-          <span className="text-sm font-semibold tracking-tight">
+          <span className="text-base font-semibold tracking-tight">
             KTracker <span className="text-accent">CRM</span>
           </span>
           <button
@@ -64,13 +64,13 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "group flex items-center gap-2.5 rounded-md border-l-2 px-3 py-2 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-primary/15 text-accent"
-                    : "text-muted-foreground hover:bg-surface-hover hover:text-foreground",
+                    ? "border-accent bg-primary/15 text-accent"
+                    : "border-transparent text-muted-foreground hover:border-accent/40 hover:bg-surface-hover hover:text-foreground",
                 )}
               >
-                <Icon className="size-4" />
+                <Icon className="size-4 transition-transform group-hover:translate-x-0.5" />
                 {item.label}
               </Link>
             );

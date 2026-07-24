@@ -103,21 +103,26 @@ export default async function DashboardOverviewPage({
       </div>
 
       <KpiCards kpis={kpis} previousKpis={previousKpis} currency={currency} />
-      <FunnelChart steps={funnel} />
-      <RevenueChart data={timeSeries} currency={currency} />
-      <CampaignTable rows={campaigns} currency={currency} />
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="flex flex-col gap-6 border-t border-border pt-6">
+        <FunnelChart steps={funnel} />
+        <RevenueChart data={timeSeries} currency={currency} />
+        <CampaignTable rows={campaigns} currency={currency} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 border-t border-border pt-6 lg:grid-cols-2">
         <ProductSalesChart rows={products} currency={currency} />
         <PaymentDonut rows={payments} currency={currency} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 border-t border-border pt-6 lg:grid-cols-2">
         <HourlyChart rows={hourly} />
         <RegionRanking rows={regions} />
       </div>
 
-      <LiveEventLog offerId={filters.offerId} offerNames={offerNames} supabaseConfigured={configured} />
+      <div className="border-t border-border pt-6">
+        <LiveEventLog offerId={filters.offerId} offerNames={offerNames} supabaseConfigured={configured} />
+      </div>
     </div>
   );
 }

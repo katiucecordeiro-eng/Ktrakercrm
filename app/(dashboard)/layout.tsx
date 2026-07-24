@@ -40,7 +40,7 @@ export default async function DashboardLayout({
       <div className="flex h-screen w-full overflow-hidden">
         <Sidebar />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface px-3 md:px-6">
+          <header className="dot-grid flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface px-3 md:px-6">
             <div className="flex min-w-0 items-center gap-2">
               <MobileMenuButton />
               <Suspense fallback={<Skeleton className="h-9 w-[180px]" />}>

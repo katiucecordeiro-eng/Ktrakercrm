@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Info } from "lucide-react";
 
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import { useCountUp } from "@/hooks/use-count-up";
@@ -60,6 +61,7 @@ function DeltaChip({
 
 function Kpi({
   label,
+  description,
   value,
   format,
   currency,
@@ -72,6 +74,7 @@ function Kpi({
   className,
 }: {
   label: string;
+  description?: string;
   value: number | null;
   format: KpiFormat;
   currency: string;
@@ -95,7 +98,14 @@ function Kpi({
       )}
     >
       <CardHeader className="gap-1.5">
-        <CardTitle>{label}</CardTitle>
+        <CardTitle className="flex items-center gap-1">
+          {label}
+          {description ? (
+            <Tooltip content={description}>
+              <Info className="size-3 cursor-help text-muted-foreground/60" />
+            </Tooltip>
+          ) : null}
+        </CardTitle>
         <div className="flex items-baseline gap-2">
           <span
             className={cn(
@@ -132,6 +142,7 @@ export function KpiCards({
     <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
       <Kpi
         label="Faturamento bruto"
+        description="Soma do valor de todas as vendas aprovadas no período, sem descontar reembolsos, imposto ou taxa da Hotmart."
         value={kpis.grossRevenue}
         format="currency"
         currency={currency}
@@ -139,6 +150,7 @@ export function KpiCards({
       />
       <Kpi
         label="Faturamento líquido"
+        description="Faturamento bruto menos o valor de vendas reembolsadas/estornadas no período."
         value={kpis.netRevenue}
         format="currency"
         currency={currency}
@@ -146,6 +158,7 @@ export function KpiCards({
       />
       <Kpi
         label="Gasto com anúncios"
+        description="Soma do gasto sincronizado da Meta Ads (Marketing API) de todas as campanhas ativas no período."
         value={kpis.adSpend}
         format="currency"
         currency={currency}
@@ -154,6 +167,7 @@ export function KpiCards({
       />
       <Kpi
         label="ROAS"
+        description="Faturamento bruto ÷ gasto com anúncios. Borda pulsante quando ≥ 2x."
         value={kpis.roas}
         format="roas"
         currency={currency}
@@ -164,6 +178,7 @@ export function KpiCards({
       />
       <Kpi
         label="Lucro"
+        description="Faturamento líquido − gasto com anúncios − imposto da oferta (ponderado quando 'todas as ofertas' está selecionado)."
         value={kpis.profit}
         format="currency"
         currency={currency}
@@ -172,6 +187,7 @@ export function KpiCards({
       />
       <Kpi
         label="CPA"
+        description="Custo por aquisição: gasto com anúncios ÷ número de vendas aprovadas no período."
         value={kpis.cpa}
         format="currency"
         currency={currency}
@@ -180,6 +196,7 @@ export function KpiCards({
       />
       <Kpi
         label="Margem de lucro"
+        description="Lucro ÷ faturamento bruto, em %."
         value={kpis.marginPct}
         format="percent"
         currency={currency}
@@ -187,6 +204,7 @@ export function KpiCards({
       />
       <Kpi
         label="Ticket médio"
+        description="Faturamento bruto ÷ número de vendas aprovadas no período."
         value={kpis.averageTicket}
         format="currency"
         currency={currency}
@@ -194,6 +212,7 @@ export function KpiCards({
       />
       <Kpi
         label="Nº de vendas"
+        description="Total de vendas aprovadas no período."
         value={kpis.salesCount}
         format="number"
         currency={currency}
@@ -201,6 +220,7 @@ export function KpiCards({
       />
       <Kpi
         label="Taxa de reembolso"
+        description="Vendas reembolsadas/estornadas ÷ (vendas aprovadas + reembolsadas), em %."
         value={kpis.refundRatePct}
         format="percent"
         currency={currency}
@@ -210,6 +230,7 @@ export function KpiCards({
       />
       <Kpi
         label="Vendas reembolsadas"
+        description="Quantidade e valor bruto de vendas reembolsadas ou com chargeback no período."
         value={kpis.refundedCount}
         format="number"
         currency={currency}
@@ -219,6 +240,7 @@ export function KpiCards({
       />
       <Kpi
         label="Checkouts iniciados"
+        description="Total de eventos InitiateCheckout registrados no período (via track.js)."
         value={kpis.initiatedCheckouts}
         format="number"
         currency={currency}
@@ -226,6 +248,7 @@ export function KpiCards({
       />
       <Kpi
         label="Custo por checkout"
+        description="Gasto com anúncios ÷ número de checkouts iniciados no período."
         value={kpis.costPerCheckout}
         format="currency"
         currency={currency}

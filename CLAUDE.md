@@ -514,8 +514,27 @@ polish geral) ficam como roteiro para quando a usuária pedir.
   que antes eram `<div>` sem estilo nenhum (`layout.tsx`, `dashboard/page.tsx`).
 - **"Elementos 3D/isométricos" do pedido original não são literais** —
   substituídos por `.dot-grid` (padrão de pontos em CSS puro,
-  `globals.css`), já que ilustração 3D bespoke exigiria assets de design
-  que não existem no projeto.
+  `globals.css`, aplicado no header do shell), já que ilustração 3D
+  bespoke exigiria assets de design que não existem no projeto.
+- **Sidebar**: item ativo ganha borda esquerda verde (`border-l-2
+  border-accent`) além do fundo já existente; ícone desliza levemente
+  (`group-hover:translate-x-0.5`) no hover.
+- **Botão "texto deslizante" do pedido original não foi implementado
+  literalmente** — exigiria duplicar `children` numa estrutura de `span`,
+  o que quebraria o padrão `asChild`/`Slot` (Radix) usado em ~10 lugares
+  do app (`DialogTrigger asChild`, etc.) e os botões só-ícone. Substituído
+  por um hover mais sutil e seguro: `transition-all` (era só
+  `transition-colors`) + leve elevação (`hover:-translate-y-px`) +
+  compressão no clique (`active:scale-[0.98]`), em `components/ui/button.tsx`
+  — funciona igual em qualquer variante/uso do componente.
+- **Tooltips ricos nos KPIs**: novo `components/ui/tooltip.tsx`, escrito à
+  mão (hover/focus + `useState` local, sem `@radix-ui/react-tooltip` —
+  mantém a convenção "componentes no padrão shadcn/ui escritos à mão" do
+  projeto) — cada card de KPI tem um ícone `Info` que mostra a fórmula de
+  cálculo daquele KPI ao passar o mouse.
+- **Divisores entre seções**: `border-t border-border pt-6` entre os
+  blocos da Visão Geral (KPIs → funil/receita/campanhas → gráficos
+  secundários → log de eventos), no lugar de só `gap-6` empilhado.
 
 ## Identidade visual
 
