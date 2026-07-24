@@ -1,3 +1,5 @@
+import { formatMetaApiError } from "./error";
+
 const META_API_VERSION = "v21.0";
 
 export type MetaAccountInfo = {
@@ -48,8 +50,7 @@ export async function fetchMetaAccountInfo(params: {
     const json: Record<string, unknown> = await res.json();
 
     if (!res.ok) {
-      const apiError = json.error as { message?: string } | undefined;
-      return { error: apiError?.message ?? `HTTP ${res.status}` };
+      return { error: formatMetaApiError(json, res.status) };
     }
 
     const currency = String(json.currency ?? "BRL");

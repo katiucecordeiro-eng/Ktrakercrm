@@ -1,3 +1,5 @@
+import { formatMetaApiError } from "./error";
+
 const META_API_VERSION = "v21.0";
 
 export type MetaInsightRow = {
@@ -70,8 +72,7 @@ export async function fetchMetaInsights(params: {
       const json: Record<string, unknown> = await res.json();
 
       if (!res.ok) {
-        const apiError = json.error as { message?: string } | undefined;
-        return { rows, error: apiError?.message ?? `HTTP ${res.status}` };
+        return { rows, error: formatMetaApiError(json, res.status) };
       }
 
       for (const item of (json.data ?? []) as Record<string, unknown>[]) {
