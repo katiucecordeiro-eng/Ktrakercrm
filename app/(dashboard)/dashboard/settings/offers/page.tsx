@@ -23,6 +23,7 @@ import { maskSecret } from "@/lib/crypto/secrets";
 import type { Offer } from "@/lib/types/offer";
 import { OfferFormDialog } from "./offer-form-dialog";
 import { InstallSnippetDialog } from "./install-snippet-dialog";
+import { UtmTemplateDialog } from "./utm-template-dialog";
 import { SyncAdSpendDialog } from "./sync-ad-spend-dialog";
 import { AccountSpendDialog } from "./account-spend-dialog";
 import { HotmartSyncDialog } from "./hotmart-sync-dialog";
@@ -56,13 +57,16 @@ export default async function OffersPage() {
             Pixel Meta, GA4 e produtos Hotmart próprios.
           </p>
         </div>
-        <OfferFormDialog
-          trigger={
-            <Button>
-              <Plus /> Nova oferta
-            </Button>
-          }
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <UtmTemplateDialog />
+          <OfferFormDialog
+            trigger={
+              <Button>
+                <Plus /> Nova oferta
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <Card>

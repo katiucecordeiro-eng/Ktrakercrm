@@ -58,6 +58,13 @@ utm_content  = {{ad.id}}--{{ad.name}}
 utm_medium   = {{adset.id}}--{{adset.name}}
 ```
 
+Botão **"UTMs para Meta Ads"** em Configurações → Ofertas
+(`utm-template-dialog.tsx`) copia a string pronta pro campo "Parâmetros
+de URL" do Gerenciador de Anúncios — um só template serve pra todas as
+ofertas/campanhas, já que os `{{...}}` são preenchidos pela própria Meta
+por anúncio (não é um valor por oferta, por isso o botão fica uma vez só
+na página, não repetido por linha).
+
 ### Nomes de eventos padrão
 
 `PageView`, `ViewContent`, `AddToCart`, `InitiateCheckout`, `Purchase`,
