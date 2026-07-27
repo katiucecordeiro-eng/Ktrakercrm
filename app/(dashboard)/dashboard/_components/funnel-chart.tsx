@@ -72,6 +72,12 @@ export function FunnelChart({ steps }: { steps: FunnelStep[] }) {
                   ? Math.max(6, (steps[index + 1]!.count / max) * 100)
                   : widthPct;
               const inset = (widthPct - nextWidthPct) / 2 / widthPct;
+              // Gradiente fica mais claro conforme desce (estilo Utmify: verde
+              // forte no topo, afinando pra um tom mais suave nas últimas
+              // etapas) — proporção calculada pelo índice, não por benchmark.
+              const progress = steps.length > 1 ? index / (steps.length - 1) : 0;
+              const topAlpha = Math.round(92 - progress * 55);
+              const bottomAlpha = Math.max(22, topAlpha - 18);
               return (
                 <div key={step.label} className="flex w-full flex-col items-center gap-1.5">
                   <div className="flex w-full max-w-2xl items-baseline justify-between text-sm">
@@ -81,11 +87,13 @@ export function FunnelChart({ steps }: { steps: FunnelStep[] }) {
                     </span>
                   </div>
                   <div
-                    className="h-10 bg-accent/70"
+                    className="h-10"
                     style={{
                       width: `${widthPct}%`,
                       maxWidth: "42rem",
                       clipPath: `polygon(0 0, 100% 0, ${100 - inset * 100}% 100%, ${inset * 100}% 100%)`,
+                      background: `linear-gradient(180deg, color-mix(in srgb, var(--color-accent) ${topAlpha}%, transparent) 0%, color-mix(in srgb, var(--color-accent) ${bottomAlpha}%, transparent) 100%)`,
+                      boxShadow: index === 0 ? "0 0 28px color-mix(in srgb, var(--color-accent) 45%, transparent)" : undefined,
                     }}
                   />
                   {index > 0 && (

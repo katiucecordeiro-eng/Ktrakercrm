@@ -526,7 +526,12 @@ polish geral) ficam como roteiro para quando a usuária pedir.
   (`clip-path` trapezoidal calculado a partir da largura da etapa atual e
   da próxima), com badge de conversão colorido por faixa entre etapas
   (heurística: ≥40% verde, 15–40% âmbar, <15% vermelho — ajustável, não
-  vem de nenhum benchmark) e toggle "Funil"/"Tabela".
+  vem de nenhum benchmark) e toggle "Funil"/"Tabela". **Gradiente por
+  etapa** (pós-lançamento, referência visual Utmify que a usuária mandou):
+  cada segmento usa `linear-gradient` com `color-mix(in srgb, var(--color-accent) X%, transparent)`,
+  `X` decrescente por índice da etapa (~92% no topo até ~35% na última) —
+  verde forte no topo, afinando pro fundo escuro nas etapas finais; glow
+  (`box-shadow`) só no primeiro segmento.
 - **Etapas do funil ajustadas (pós-lançamento)**: removida "Adições ao
   carrinho" (a oferta não tem conceito de carrinho — sempre ficava
   zerada). "Checkouts iniciados" agora vem preferencialmente do
