@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { WebhookUrlCopy } from "./webhook-url-copy";
 
 type WebhookLog = {
   id: string;
@@ -45,7 +46,13 @@ export async function RecentWebhooks() {
           chegando e qual o formato real do payload (ver `webhook_logs.payload`).
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-2">
+      <CardContent className="flex flex-col gap-4">
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+            URL para configurar no painel da Hotmart:
+          </p>
+          <WebhookUrlCopy />
+        </div>
         {logs.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             Nenhum webhook recebido ainda.

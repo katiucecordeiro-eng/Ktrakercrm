@@ -129,10 +129,12 @@ export function KpiCards({
   kpis,
   previousKpis,
   currency,
+  roasTarget = 2,
 }: {
   kpis: KpiSummary;
   previousKpis?: KpiSummary;
   currency: string;
+  roasTarget?: number;
 }) {
   const profitTone = kpis.profit >= 0 ? "accent" : "danger";
   const refundTone = (kpis.refundRatePct ?? 0) > 10 ? "danger" : undefined;
@@ -167,12 +169,12 @@ export function KpiCards({
       />
       <Kpi
         label="ROAS"
-        description="Faturamento bruto ÷ gasto com anúncios. Borda pulsante quando ≥ 2x."
+        description={`Faturamento bruto ÷ gasto com anúncios. Borda pulsante quando ≥ ${roasTarget}x (meta configurável por oferta).`}
         value={kpis.roas}
         format="roas"
         currency={currency}
         tone="accent"
-        glowPulse={(kpis.roas ?? 0) >= 2}
+        glowPulse={(kpis.roas ?? 0) >= roasTarget}
         deltaPct={deltas.roas}
         className="lg:col-span-2 lg:row-span-1"
       />

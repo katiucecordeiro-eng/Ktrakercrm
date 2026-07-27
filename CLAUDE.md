@@ -754,6 +754,69 @@ Instagram) — a seção 3 funciona nos dois modos, igual ao resto do CRM.
   ficou como refinamento futuro (a ordenação client-side cobre a
   necessidade mais comum, que é achar o pior/melhor criativo rápido).
 
+### Melhorias gerais e polish ("Sprint F", pós-lançamento)
+
+Última rodada do roteiro original — fecha as 6 sprints do documento
+"PROMPT SESSÃO 2".
+
+- **Meta de ROAS por oferta** (`offers.roas_target`, migration `0012`,
+  default `2`): substitui o limiar fixo de 2x que existia hardcoded em
+  `campaign-table.tsx`/`kpi-cards.tsx` — agora vem do formulário da
+  oferta e é usado tanto no badge verde/vermelho da tabela de campanhas
+  quanto na borda pulsante do KPI de ROAS. Em "todas as ofertas", cai
+  pro default `2` (não há uma meta "combinada" sensata entre ofertas
+  diferentes).
+- **Fuso horário por oferta** (`offers.timezone`, mesma migration, default
+  `America/Sao_Paulo`): usado só na quebra de vendas por hora do dia
+  (`getHourlyBreakdown`/`getTimeSeries` com granularidade "hora") via
+  `Intl.DateTimeFormat` — antes sempre corria na hora do servidor (UTC na
+  Vercel). Também só faz sentido com uma oferta específica selecionada;
+  em "todas as ofertas" cai pro UTC.
+- **URL do webhook Hotmart visível** (`webhook-url-copy.tsx`, ao lado da
+  lista de últimos 10 recebidos): mesma convenção do snippet de instalação
+  — sem `NEXT_PUBLIC_APP_URL` configurada, mostra aviso em vez de um
+  placeholder falso.
+- **Checklist de diagnóstico do sistema** (`lib/system-status.ts` +
+  `system-status-card.tsx`, topo de Configurações → Ofertas): confere só
+  a *presença* de cada env var crítica (nunca o valor), separada em
+  "obrigatórias" (Supabase, `SECRETS_ENCRYPTION_KEY`, `NEXT_PUBLIC_APP_URL`)
+  e "opcionais com fallback" (`HOTMART_HOTTOK`, `CRON_SECRET`, credenciais
+  do backfill Hotmart) — badge "Sistema 100% operacional" só considera as
+  obrigatórias.
+- **Toasts em tempo real** (`components/ui/toast.tsx`, escrito à mão, sem
+  lib nova — mesma convenção do `tooltip.tsx`): `ToastProvider` montado
+  uma vez no layout do dashboard.
+  - **Nova venda aprovada**: `new-sale-toast-listener.tsx` assina
+    Realtime em `sales` (migration `0013` adiciona a tabela à publicação
+    e liga `replica identity full`, necessário pro payload de `UPDATE`
+    trazer o status anterior) — dispara só na transição pra `approved`
+    (INSERT já aprovado, ou UPDATE que muda de outro status pra
+    `approved`), mesma semântica do disparo de Purchase pro Meta/GA4.
+  - **ROAS abaixo da meta**: não é um evento realmente "em tempo real"
+    (gasto só muda quando alguém sincroniza com a Meta) — em vez de criar
+    um job de fundo dedicado, `campaigns-table-section.tsx` avisa uma vez
+    quando os dados da tabela de campanhas carregam, se alguma campanha
+    com gasto está abaixo do `roas_target` da oferta.
+- **Exportar CSV** também em Visitantes (`visitors-export-button.tsx`,
+  exporta só a página atual da lista filtrada — não há uma query de
+  "exportar tudo" separada ainda) e no log de eventos ao vivo
+  (botão em `live-event-log.tsx`, exporta os até 20 eventos já carregados
+  na tela).
+- **Exportar PDF da Visão Geral**: `window.print()` + CSS de impressão
+  (`print:` do Tailwind) em vez de uma lib de geração de PDF no servidor
+  — o usuário escolhe "Salvar como PDF" no diálogo de impressão do
+  próprio navegador. Sidebar, header, controles de período/atualizar e a
+  pilha de toasts ganham `print:hidden`; os containers com
+  `overflow-hidden`/`h-screen` do shell viram `overflow-visible`/`h-auto`
+  só na impressão, senão o conteúdo fica cortado na altura da tela.
+  `print-color-adjust: exact` global garante que o tema escuro realmente
+  imprime (por padrão a maioria dos navegadores descarta fundos escuros).
+- **Modo de comparação de período do pedido original** já estava
+  satisfeito pela Sprint A (KPIs sempre mostram delta % vs. período
+  anterior) — não foi adicionado um toggle "comparar sim/não" separado,
+  já que esconder um dado que já está calculado (barato de manter visível)
+  seria regressão, não polish.
+
 ## Identidade visual
 
 Tema dark forte: fundo `#0A0E14`, superfícies `#111722`, bordas `#1E2733`.

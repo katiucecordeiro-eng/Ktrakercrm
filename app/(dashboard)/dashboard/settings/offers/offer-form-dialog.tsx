@@ -153,6 +153,21 @@ export function OfferFormDialog({
               defaultValue={offer?.tax_rate ?? 0}
             />
           </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field
+              label="Meta de ROAS (badges verde/vermelho)"
+              name="roas_target"
+              type="number"
+              step="0.1"
+              defaultValue={offer?.roas_target ?? 2}
+            />
+            <Field
+              label="Fuso horário (IANA)"
+              name="timezone"
+              defaultValue={offer?.timezone ?? "America/Sao_Paulo"}
+              placeholder="America/Sao_Paulo"
+            />
+          </div>
           <div className="flex items-center gap-3">
             <Switch checked={active} onCheckedChange={setActive} />
             <Label>Oferta ativa</Label>

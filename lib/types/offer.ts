@@ -21,6 +21,10 @@ export type Offer = {
   hotmart_product_ids: string[];
   currency: string;
   tax_rate: number;
+  /** Meta de ROAS usada nos badges verde/vermelho (não vem de benchmark). */
+  roas_target: number;
+  /** Fuso horário usado na quebra de vendas por hora do dia (IANA, ex. America/Sao_Paulo). */
+  timezone: string;
   active: boolean;
   created_at: string;
   updated_at: string;

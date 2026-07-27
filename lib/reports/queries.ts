@@ -212,9 +212,29 @@ function bucketLabel(key: string, granularity: ReportFilters["granularity"]): st
   return key.slice(5).split("-").reverse().join("/");
 }
 
+// Converte um timestamp UTC pra hora local (0-23) num fuso IANA — usado
+// pra quebra de vendas por hora do dia respeitar o fuso da oferta em vez
+// de sempre UTC/hora do servidor. Só faz sentido com uma oferta específica
+// selecionada (fusos diferentes por oferta não têm uma hora "combinada"
+// sensata em "todas as ofertas" — cai pro fuso passado, default UTC).
+function hourInTimezone(isoString: string, timezone: string): number {
+  try {
+    const formatted = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      hour: "numeric",
+      hour12: false,
+    }).format(new Date(isoString));
+    const hour = parseInt(formatted, 10);
+    return hour === 24 ? 0 : hour;
+  } catch {
+    return new Date(isoString).getUTCHours();
+  }
+}
+
 async function getHourlyRevenue(
   supabase: SupabaseClient,
   filters: ReportFilters,
+  timezone = "UTC",
 ): Promise<{ hour: number; revenue: number; count: number }[]> {
   const query = applyOfferFilter(
     supabase
@@ -229,7 +249,7 @@ async function getHourlyRevenue(
 
   const buckets = Array.from({ length: 24 }, (_, hour) => ({ hour, revenue: 0, count: 0 }));
   for (const row of (data as { gross_value: number; approved_at: string }[] | null) ?? []) {
-    const hour = new Date(row.approved_at).getHours();
+    const hour = hourInTimezone(row.approved_at, timezone);
     buckets[hour]!.revenue += Number(row.gross_value ?? 0);
     buckets[hour]!.count += 1;
   }
@@ -239,10 +259,11 @@ async function getHourlyRevenue(
 export async function getTimeSeries(
   supabase: SupabaseClient,
   filters: ReportFilters,
+  timezone = "UTC",
 ): Promise<TimeSeriesPoint[]> {
   if (filters.granularity === "hour") {
     const [hourly, dailyRows] = await Promise.all([
-      getHourlyRevenue(supabase, filters),
+      getHourlyRevenue(supabase, filters, timezone),
       fetchDailyMetrics(supabase, filters),
     ]);
     const totalSpend = dailyRows.reduce((sum, row) => sum + row.ad_spend, 0);
@@ -462,8 +483,9 @@ export async function getPaymentBreakdown(
 export async function getHourlyBreakdown(
   supabase: SupabaseClient,
   filters: ReportFilters,
+  timezone = "UTC",
 ): Promise<HourlyRow[]> {
-  const hourly = await getHourlyRevenue(supabase, filters);
+  const hourly = await getHourlyRevenue(supabase, filters, timezone);
   return hourly.map((h) => ({ hour: h.hour, count: h.count }));
 }
 

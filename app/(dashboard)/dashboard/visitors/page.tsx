@@ -21,6 +21,7 @@ import type { RawSearchParams } from "@/lib/reports/filters";
 import { VisitorsSearch } from "./_components/visitors-search";
 import { StatusBadge } from "./_components/status-badge";
 import { VisitorsFilters } from "./_components/visitors-filters";
+import { VisitorsExportButton } from "./_components/visitors-export-button";
 
 const VALID_STATUSES: VisitorStatus[] = ["visitor", "lead", "buyer", "refunded"];
 
@@ -111,7 +112,10 @@ export default async function VisitorsPage({
             {formatNumber(total)} visitante(s){offer ? ` em ${offer.name}` : ""}.
           </p>
         </div>
-        <VisitorsSearch defaultValue={search} />
+        <div className="flex flex-wrap items-center gap-2">
+          <VisitorsSearch defaultValue={search} />
+          <VisitorsExportButton rows={rows} />
+        </div>
       </div>
 
       <VisitorsFilters status={status} since={since} until={until} />

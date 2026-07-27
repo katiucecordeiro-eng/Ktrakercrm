@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { LiveIndicator } from "@/components/layout/live-indicator";
 import { createClient } from "@/lib/supabase/client";
+import { downloadCsv, rowsToCsv } from "@/lib/utils/csv";
 
 type LiveEvent = {
   id: string;
@@ -55,6 +57,19 @@ export function LiveEventLog({
     };
   }, [offerId, supabaseConfigured]);
 
+  function handleExport() {
+    const csv = rowsToCsv(
+      ["Evento", "Oferta", "Campanha", "Horário"],
+      events.map((event) => [
+        event.event_name,
+        offerNames[event.offer_id] ?? event.offer_id,
+        event.utm_campaign,
+        event.created_at,
+      ]),
+    );
+    downloadCsv(`log-eventos-${new Date().toISOString().slice(0, 10)}.csv`, csv);
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
@@ -62,7 +77,14 @@ export function LiveEventLog({
           <CardTitle>Log de eventos ao vivo</CardTitle>
           <CardDescription>Stream em tempo real via Supabase Realtime.</CardDescription>
         </div>
-        <LiveIndicator connected={connected} />
+        <div className="flex items-center gap-2">
+          {events.length > 0 ? (
+            <Button type="button" variant="outline" size="sm" onClick={handleExport}>
+              Exportar CSV
+            </Button>
+          ) : null}
+          <LiveIndicator connected={connected} />
+        </div>
       </CardHeader>
       <CardContent className="flex max-h-72 flex-col gap-1 overflow-y-auto">
         {events.length === 0 ? (

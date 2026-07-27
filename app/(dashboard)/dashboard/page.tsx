@@ -32,6 +32,7 @@ import { ProductSalesChart } from "./_components/product-sales-chart";
 import { HourlyChart } from "./_components/hourly-chart";
 import { RegionRanking } from "./_components/region-ranking";
 import { LiveEventLog } from "./_components/live-event-log";
+import { ExportPdfButton } from "./_components/export-pdf-button";
 
 async function getOffers(): Promise<Offer[]> {
   if (!isSupabaseConfigured()) return [];
@@ -73,15 +74,16 @@ export default async function DashboardOverviewPage({
 
   const supabase = await createClient();
   const previousFilters = getPreviousPeriodFilters(filters);
+  const timezone = selectedOffer?.timezone ?? "UTC";
   const [kpis, previousKpis, funnel, timeSeries, campaigns, payments, hourly, regions, products] =
     await Promise.all([
       getKpis(supabase, filters, offers),
       getKpis(supabase, previousFilters, offers),
       getFunnel(supabase, filters),
-      getTimeSeries(supabase, filters),
+      getTimeSeries(supabase, filters, timezone),
       getCampaignTable(supabase, filters),
       getPaymentBreakdown(supabase, filters),
-      getHourlyBreakdown(supabase, filters),
+      getHourlyBreakdown(supabase, filters, timezone),
       getRegionRanking(supabase, filters),
       getSalesByProduct(supabase, filters),
     ]);
@@ -94,8 +96,11 @@ export default async function DashboardOverviewPage({
           <p className="text-sm text-muted-foreground">
             {selectedOffer ? selectedOffer.name : "Todas as ofertas"}
           </p>
+          <p className="hidden text-xs text-muted-foreground print:block">
+            Período: {filters.since.toLocaleDateString("pt-BR")} – {filters.until.toLocaleDateString("pt-BR")}
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 print:hidden">
           <Suspense fallback={<Skeleton className="h-9 w-[180px]" />}>
             <PeriodSwitcher
               period={filters.period}
@@ -104,15 +109,21 @@ export default async function DashboardOverviewPage({
             />
           </Suspense>
           <RefreshButton />
+          <ExportPdfButton />
         </div>
       </div>
 
-      <KpiCards kpis={kpis} previousKpis={previousKpis} currency={currency} />
+      <KpiCards
+        kpis={kpis}
+        previousKpis={previousKpis}
+        currency={currency}
+        roasTarget={selectedOffer?.roas_target ?? 2}
+      />
 
       <div className="flex flex-col gap-6 border-t border-border pt-6">
         <FunnelChart steps={funnel} />
         <RevenueChart data={timeSeries} currency={currency} />
-        <CampaignTable rows={campaigns} currency={currency} />
+        <CampaignTable rows={campaigns} currency={currency} roasTarget={selectedOffer?.roas_target ?? 2} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 border-t border-border pt-6 lg:grid-cols-2">

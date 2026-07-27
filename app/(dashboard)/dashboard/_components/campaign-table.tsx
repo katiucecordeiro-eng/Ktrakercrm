@@ -17,21 +17,21 @@ import {
 import { formatCurrency, formatNumber, formatPercent, formatRoas } from "@/lib/format";
 import type { CampaignAdRow, CampaignRow } from "@/lib/reports/types";
 
-const ROAS_THRESHOLD = 2;
-
-function RoasBadge({ roas }: { roas: number | null }) {
+function RoasBadge({ roas, roasTarget }: { roas: number | null; roasTarget: number }) {
   if (roas === null) return <span className="text-muted-foreground">—</span>;
-  return <Badge variant={roas >= ROAS_THRESHOLD ? "default" : "destructive"}>{formatRoas(roas)}</Badge>;
+  return <Badge variant={roas >= roasTarget ? "default" : "destructive"}>{formatRoas(roas)}</Badge>;
 }
 
 function MetricsCells({
   row,
   currency,
   showMore,
+  roasTarget,
 }: {
   row: CampaignAdRow;
   currency: string;
   showMore: boolean;
+  roasTarget: number;
 }) {
   return (
     <>
@@ -39,7 +39,7 @@ function MetricsCells({
       <TableCell className="font-mono-nums">{formatCurrency(row.revenue, currency)}</TableCell>
       <TableCell className="font-mono-nums">{formatNumber(row.salesCount)}</TableCell>
       <TableCell>
-        <RoasBadge roas={row.roas} />
+        <RoasBadge roas={row.roas} roasTarget={roasTarget} />
       </TableCell>
       <TableCell className="font-mono-nums">
         {row.cpa !== null ? formatCurrency(row.cpa, currency) : "—"}
@@ -69,11 +69,13 @@ export function CampaignTable({
   currency,
   showStatus = false,
   onExportCsv,
+  roasTarget = 2,
 }: {
   rows: CampaignRow[];
   currency: string;
   showStatus?: boolean;
   onExportCsv?: () => void;
+  roasTarget?: number;
 }) {
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [expandedAdsets, setExpandedAdsets] = useState<Set<string>>(new Set());
@@ -111,7 +113,7 @@ export function CampaignTable({
           <CardDescription>
             Clique numa campanha para ver conjuntos, e num conjunto para ver os
             anúncios/criativos (destacados em outra cor). Badge verde: ROAS ≥{" "}
-            {ROAS_THRESHOLD}x.
+            {roasTarget}x.
           </CardDescription>
         </div>
         <div className="flex gap-2">
@@ -161,7 +163,7 @@ export function CampaignTable({
                     <TableRow key={campaign.id} className="bg-surface/40">
                       <TableCell className="italic text-muted-foreground">{campaign.name}</TableCell>
                       {showStatus ? <TableCell>—</TableCell> : null}
-                      <MetricsCells row={campaign} currency={currency} showMore={showMore} />
+                      <MetricsCells row={campaign} currency={currency} showMore={showMore} roasTarget={roasTarget} />
                     </TableRow>
                   );
                 }
@@ -183,7 +185,7 @@ export function CampaignTable({
                           </Badge>
                         </TableCell>
                       ) : null}
-                      <MetricsCells row={campaign} currency={currency} showMore={showMore} />
+                      <MetricsCells row={campaign} currency={currency} showMore={showMore} roasTarget={roasTarget} />
                     </TableRow>
                     {campaignOpen &&
                       campaign.adsets.map((adset) => {
@@ -204,7 +206,7 @@ export function CampaignTable({
                                 <span className="max-w-[240px] truncate">{adset.name}</span>
                               </TableCell>
                               {showStatus ? <TableCell /> : null}
-                              <MetricsCells row={adset} currency={currency} showMore={showMore} />
+                              <MetricsCells row={adset} currency={currency} showMore={showMore} roasTarget={roasTarget} />
                             </TableRow>
                             {adsetOpen &&
                               adset.ads.map((ad) => (
@@ -216,7 +218,7 @@ export function CampaignTable({
                                     <span className="max-w-[220px] truncate">{ad.name}</span>
                                   </TableCell>
                                   {showStatus ? <TableCell /> : null}
-                                  <MetricsCells row={ad} currency={currency} showMore={showMore} />
+                                  <MetricsCells row={ad} currency={currency} showMore={showMore} roasTarget={roasTarget} />
                                 </TableRow>
                               ))}
                           </Fragment>

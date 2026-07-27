@@ -111,3 +111,14 @@ body {
 ::selection {
   background: rgba(34, 255, 136, 0.25);
 }
+
+/* Exportar PDF (Sprint F) usa a impressão nativa do navegador em vez de
+   uma lib de geração de PDF — sem isso, a maioria dos navegadores
+   descarta fundos/cores escuras ao imprimir por padrão, deixando o
+   relatório ilegível (texto claro em fundo branco). */
+@media print {
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+}

@@ -31,6 +31,8 @@ export const offerFormSchema = z.object({
     ),
   currency: z.string().trim().min(1).default("BRL"),
   tax_rate: z.coerce.number().min(0).max(100).default(0),
+  roas_target: z.coerce.number().min(0).default(2),
+  timezone: z.string().trim().min(1).default("America/Sao_Paulo"),
   active: z
     .enum(["true", "false"])
     .default("true")

@@ -30,6 +30,7 @@ import { HotmartSyncDialog } from "./hotmart-sync-dialog";
 import { ConnectionTestDialog } from "./connection-test-dialog";
 import { RecentWebhooks } from "./recent-webhooks";
 import { CampaignMappingDialog, type CampaignOption, type CampaignMappingRow } from "./campaign-mapping-dialog";
+import { SystemStatusCard } from "./system-status-card";
 
 async function getOffers(): Promise<Offer[]> {
   if (!isSupabaseConfigured()) return [];
@@ -111,6 +112,7 @@ export default async function OffersPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <SystemStatusCard />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-lg font-semibold">Ofertas</h1>

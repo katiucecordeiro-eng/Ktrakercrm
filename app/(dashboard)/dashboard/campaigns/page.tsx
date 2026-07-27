@@ -97,7 +97,7 @@ export default async function CampaignsPage({
         <RoasTrendChart data={roasTrend} />
       </div>
 
-      <CampaignsTableSection rows={rows} currency={currency} />
+      <CampaignsTableSection rows={rows} currency={currency} roasTarget={selectedOffer?.roas_target ?? 2} />
     </div>
   );
 }
