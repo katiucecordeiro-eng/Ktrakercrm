@@ -1,4 +1,4 @@
-export type Granularity = "hour" | "day" | "week" | "month";
+export type Granularity = "hour" | "day" | "week" | "month" | "weekday";
 
 export type PeriodPreset =
   | "today"

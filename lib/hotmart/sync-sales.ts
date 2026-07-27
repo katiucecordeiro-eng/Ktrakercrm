@@ -6,6 +6,7 @@ import {
   extractApprovedDate,
   extractBuyer,
   extractIdFromUtm,
+  extractOrderDate,
   extractPayment,
   extractPurchaseValue,
   extractSalesHistoryStatus,
@@ -80,6 +81,7 @@ export async function syncOfferSalesHistory(
       const payment = extractPayment(data);
       const product = data.product as Json | undefined;
       const approvedAt = extractApprovedDate(data);
+      const orderDate = extractOrderDate(data);
 
       const saleRow: Record<string, unknown> = {
         offer_id: offer.id,
@@ -108,6 +110,10 @@ export async function syncOfferSalesHistory(
 
       if (status === "approved") saleRow.approved_at = approvedAt;
       if (status === "refunded" || status === "chargeback") saleRow.refunded_at = approvedAt;
+      // created_at reflete a data real da compra (não a data em que rodamos
+      // o backfill) — sem isso, o default do banco (now()) faz a venda
+      // aparecer como "iniciada hoje" no funil, mesmo sendo antiga.
+      if (orderDate) saleRow.created_at = orderDate;
 
       const { error: upsertError } = await supabase
         .from("sales")

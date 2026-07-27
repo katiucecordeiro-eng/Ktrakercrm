@@ -19,6 +19,7 @@ import {
   getTimeSeries,
 } from "@/lib/reports/queries";
 import type { Offer } from "@/lib/types/offer";
+import type { Granularity } from "@/lib/reports/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { PeriodSwitcher } from "./_components/period-switcher";
@@ -58,6 +59,13 @@ export default async function DashboardOverviewPage({
   const currency = selectedOffer?.currency ?? "BRL";
   const offerNames = Object.fromEntries(offers.map((o) => [o.id, o.name]));
 
+  const VALID_CHART_GRANULARITIES: Granularity[] = ["hour", "day", "week", "month", "weekday"];
+  const chartGranularityParam =
+    typeof resolvedSearchParams.chart_granularity === "string" ? resolvedSearchParams.chart_granularity : null;
+  const chartGranularity: Granularity = VALID_CHART_GRANULARITIES.includes(chartGranularityParam as Granularity)
+    ? (chartGranularityParam as Granularity)
+    : filters.granularity;
+
   if (!configured) {
     return (
       <div className="flex flex-col gap-6">
@@ -80,7 +88,7 @@ export default async function DashboardOverviewPage({
       getKpis(supabase, filters, offers),
       getKpis(supabase, previousFilters, offers),
       getFunnel(supabase, filters),
-      getTimeSeries(supabase, filters, timezone),
+      getTimeSeries(supabase, filters, timezone, chartGranularity),
       getCampaignTable(supabase, filters),
       getPaymentBreakdown(supabase, filters),
       getHourlyBreakdown(supabase, filters, timezone),
@@ -122,7 +130,7 @@ export default async function DashboardOverviewPage({
 
       <div className="flex flex-col gap-6 border-t border-border pt-6">
         <FunnelChart steps={funnel} />
-        <RevenueChart data={timeSeries} currency={currency} />
+        <RevenueChart data={timeSeries} currency={currency} granularity={chartGranularity} />
         <CampaignTable rows={campaigns} currency={currency} roasTarget={selectedOffer?.roas_target ?? 2} />
       </div>
 

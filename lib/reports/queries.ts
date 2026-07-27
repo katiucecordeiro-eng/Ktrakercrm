@@ -194,10 +194,18 @@ export async function getFunnel(
 
 // ── Série temporal ────────────────────────────────────────────────────
 
+// Segunda primeiro (convenção BR), diferente do getDay() nativo (que
+// começa no domingo) — usado só pela granularidade "dia da semana".
+const WEEKDAY_LABELS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
 function bucketKey(dateStr: string, granularity: ReportFilters["granularity"]): string {
   if (granularity === "day" || granularity === "hour") return dateStr;
   if (granularity === "month") return dateStr.slice(0, 7);
   const d = new Date(`${dateStr}T00:00:00`);
+  if (granularity === "weekday") {
+    const isoIndex = (d.getDay() + 6) % 7;
+    return String(isoIndex);
+  }
   const day = d.getDay() || 7;
   d.setDate(d.getDate() - day + 1);
   return d.toISOString().slice(0, 10);
@@ -208,6 +216,7 @@ function bucketLabel(key: string, granularity: ReportFilters["granularity"]): st
     const [year, month] = key.split("-");
     return `${month}/${year}`;
   }
+  if (granularity === "weekday") return WEEKDAY_LABELS[Number(key)] ?? key;
   if (granularity === "week") return `sem. ${key.slice(5)}`;
   return key.slice(5).split("-").reverse().join("/");
 }
@@ -260,8 +269,11 @@ export async function getTimeSeries(
   supabase: SupabaseClient,
   filters: ReportFilters,
   timezone = "UTC",
+  overrideGranularity?: ReportFilters["granularity"],
 ): Promise<TimeSeriesPoint[]> {
-  if (filters.granularity === "hour") {
+  const granularity = overrideGranularity ?? filters.granularity;
+
+  if (granularity === "hour") {
     const [hourly, dailyRows] = await Promise.all([
       getHourlyRevenue(supabase, filters, timezone),
       fetchDailyMetrics(supabase, filters),
@@ -281,7 +293,7 @@ export async function getTimeSeries(
   const buckets = new Map<string, { revenue: number; adSpend: number; refunded: number }>();
 
   for (const row of dailyRows) {
-    const key = bucketKey(row.date, filters.granularity);
+    const key = bucketKey(row.date, granularity);
     const existing = buckets.get(key) ?? { revenue: 0, adSpend: 0, refunded: 0 };
     existing.revenue += row.gross_revenue;
     existing.adSpend += row.ad_spend;
@@ -293,7 +305,7 @@ export async function getTimeSeries(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => ({
       bucket: key,
-      label: bucketLabel(key, filters.granularity),
+      label: bucketLabel(key, granularity),
       revenue: value.revenue,
       adSpend: value.adSpend,
       // Lucro aqui não desconta imposto (varia por oferta) — ver KPI

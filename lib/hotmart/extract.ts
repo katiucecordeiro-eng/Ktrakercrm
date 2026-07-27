@@ -142,3 +142,17 @@ export function extractApprovedDate(data: Json): string | null {
   if (typeof value === "number") return new Date(value).toISOString();
   return null;
 }
+
+// Data em que a compra foi de fato iniciada (existe em qualquer status,
+// diferente de approved_date que só existe pra vendas aprovadas) — usada
+// como created_at no backfill de vendas retroativas. Sem isso, created_at
+// cai no default do banco (now()), fazendo TODAS as vendas importadas
+// aparecerem como "iniciadas" no dia do backfill em vez da data real da
+// compra (bug real encontrado: 831 vendas antigas todas com created_at
+// agrupado em 2 janelas de poucos minutos, os 2 dias em que a sincronização
+// retroativa rodou).
+export function extractOrderDate(data: Json): string | null {
+  const value = get(data, "purchase.order_date");
+  if (typeof value === "number") return new Date(value).toISOString();
+  return null;
+}

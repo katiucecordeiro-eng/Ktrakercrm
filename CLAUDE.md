@@ -817,6 +817,41 @@ Instagram) — a seção 3 funciona nos dois modos, igual ao resto do CRM.
   já que esconder um dado que já está calculado (barato de manter visível)
   seria regressão, não polish.
 
+### Bugs encontrados no uso real (pós-Sprint F)
+
+- **"Vendas iniciadas" contando centenas a mais do que deveria**: causa
+  raiz era `lib/hotmart/sync-sales.ts` (backfill de vendas retroativas)
+  nunca setar `created_at` explicitamente — o default do banco (`now()`)
+  fazia as vendas antigas importadas aparecerem como "iniciadas" no dia em
+  que a sincronização rodou, não na data real da compra (descoberto por
+  um agrupamento óbvio: centenas de vendas com `created_at` idêntico até
+  o minuto, batendo exatamente com os horários em que o backfill foi
+  executado). Corrigido com `extractOrderDate` (`lib/hotmart/extract.ts`,
+  lê `purchase.order_date`) usado como `created_at` no upsert; os
+  registros já existentes foram reparados diretamente no banco a partir
+  de `raw_payload.purchase.order_date`.
+- **Webhooks Hotmart reais sendo rejeitados silenciosamente**: investigando
+  a reclamação de "só aparece um produto em Vendas por produto", achamos
+  que ~366 webhooks reais (com produtos/order bumps distintos, corretos)
+  estavam chegando desde 23/07 mas sendo rejeitados como `invalid_hottok`
+  — ou seja, o problema nunca foi a extração de produto (que funciona
+  certo, confirmado inspecionando `webhook_logs.payload` de entregas
+  reais com múltiplos `product.id` diferentes por transação/order bump);
+  é que a var `HOTMART_HOTTOK` configurada não bate mais com o que a
+  Hotmart está enviando, então essas vendas nunca chegam a virar linha em
+  `sales`. **Isso não é corrigível por código** — precisa conferir o
+  `hottok` atual no painel da Hotmart e atualizar a env var na Vercel.
+- **Granularidade do gráfico "Faturamento × gasto × lucro" agora é
+  escolhível** (`revenue-granularity-toggle.tsx`, querystring
+  `?chart_granularity=`), independente da granularidade automática por
+  tamanho do período (`lib/reports/filters.ts#pickGranularity`, que
+  continua controlando KPIs/funil). Dia/Semana/Mês continuam somando por
+  `daily_metrics`; nova opção **"Dia da semana"** soma tudo por Seg–Dom
+  (`getTimeSeries` com `overrideGranularity: "weekday"`) — serve pra achar
+  o melhor dia da semana pra vender/anunciar, não só o melhor mês. Semana/
+  mês/dia da semana renderizam em barras (comparação lado a lado mais
+  legível que linha contínua); dia/hora continuam em linha.
+
 ## Identidade visual
 
 Tema dark forte: fundo `#0A0E14`, superfícies `#111722`, bordas `#1E2733`.
