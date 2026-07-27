@@ -569,6 +569,74 @@ polish geral) ficam como roteiro para quando a usuária pedir.
   blocos da Visão Geral (KPIs → funil/receita/campanhas → gráficos
   secundários → log de eventos), no lugar de só `gap-6` empilhado.
 
+### UTMs para Meta Ads + CRM avançado ("Sprint C", pós-lançamento)
+
+Terceira rodada: template de UTM pronto pra copiar (pedido isolado da
+usuária, fora do roteiro A–F) + Sprint C do documento original (CRM
+avançado). D (campanhas com fallback de UTM), E (Meta Business
+Intelligence) e F (polish geral) continuam como roteiro em aberto.
+
+- **Botão "UTMs para Meta Ads"** (`utm-template-dialog.tsx`, em
+  Configurações → Ofertas): diálogo único e global (não por oferta, já
+  que o template `{{...}}` da convenção de UTM é universal — ver seção
+  "Convenção de UTM obrigatória" acima) com o texto pronto pra colar em
+  Gerenciador de Anúncios → Configurações → Parâmetros de URL.
+- **Perfil do visitante continua como página** (não virou drawer/gaveta
+  como o pedido original sugeria) — decisão explícita da usuária, pra não
+  perder a URL direta e compartilhável de cada visitante.
+- **Filtros na lista de visitantes**: `visitors-filters.tsx` adiciona
+  Status (visitante/lead/comprador/reembolsado) e período (desde/até) à
+  busca já existente, tudo via querystring (mesmo padrão do
+  `visitors-search.tsx`). `searchVisitors` (`lib/crm/queries.ts`) ganhou
+  os parâmetros correspondentes — **atenção ao filtro de status**: como
+  `sale_status` é `NULL` pra quem nunca comprou, um `NOT IN` puro excluiria
+  esses visitantes por causa da lógica de três valores do SQL; por isso
+  "lead"/"visitante" usam `.or("sale_status.is.null,sale_status.not.in.(...)")`
+  em vez de só `.not("sale_status", "in", ...)`.
+- **Timeline de eventos com ícone por tipo** (`event-icon.tsx`): mapa
+  `event_name` → ícone (`PageView`→olho, `Purchase`→check, `InitiateCheckout`→
+  cartão, etc.), com fallback por prefixo (`Scroll*`) e por substring
+  (`*click*`, `*video*`, case-insensitive) pra eventos customizados que não
+  estão no mapa fixo.
+- **Mini timeline horizontal da jornada** (`journey-timeline.tsx`, topo do
+  perfil do visitante): deriva os marcos principais (primeiro contato,
+  conteúdo, checkout iniciado, venda iniciada/aprovada, reembolso) a partir
+  dos mesmos `events`/`sales` já carregados pela página — sem query nova —
+  e mostra o intervalo de tempo formatado (`min`/`h`/`dias`) entre cada
+  marco consecutivo.
+- **Payload de request enviado à Meta, não só a resposta**: `sendMetaEvent`
+  (`lib/meta/capi.ts`) agora retorna também o `request` (o evento exato
+  montado, com `user_data` já hasheado — nunca o `access_token`, que fica
+  só na URL da chamada, nunca no corpo). Nova coluna `events.meta_request`
+  (migration `0009`) grava esse payload; `event-timeline.tsx` mostra as
+  duas seções lado a lado ("Enviado à Meta" / "Resposta da Meta") no
+  evento expandido.
+- **`track.js` — três capacidades novas, todas aditivas** (não mudam nada
+  do comportamento existente se a página não usar nenhum dos atributos):
+  - **Cliques em `data-track="Nome do Evento"`**: qualquer elemento (não só
+    `<a>`) com esse atributo dispara `send(nome, { element_tag, element_text })`
+    no clique, delegado no mesmo listener que já reescrevia links Hotmart.
+  - **Vídeo**: `<video>` nativo dispara `VideoPlay`/`VideoComplete` nos
+    eventos `play`/`ended` do elemento (uma vez cada, com
+    `data-video-name` opcional pra rotular). Embeds do **YouTube/Vimeo**
+    são detectados por hostname e têm a query string do `src` reescrita
+    pra habilitar a API deles (`enablejsapi=1&origin=...` no YouTube,
+    `api=1` no Vimeo) — depois disso, o script escuta `postMessage` da
+    própria plataforma pra saber quando o vídeo começou/terminou.
+    **Não foi possível validar esse fluxo de postMessage contra um player
+    ao vivo neste ambiente** (sem acesso de rede aos domínios deles); se
+    `VideoPlay`/`VideoComplete` não disparar pra um embed específico,
+    conferir se o `src` original já tinha algum parâmetro de API
+    conflitante antes da reescrita.
+  - **Visibilidade de seção**: qualquer elemento com
+    `data-track-view="Nome da Seção"` dispara o evento uma única vez
+    quando 50% dele entra na viewport (`IntersectionObserver`,
+    `threshold: 0.5`), depois se desinscreve.
+  - A reescrita de links, o scan de vídeos/embeds e a observação de seções
+    agora rodam juntos em `scanNewContent()`, chamado no load inicial e a
+    cada mutação do DOM (um único `MutationObserver`, em vez de um
+    separado só pra links como antes).
+
 ## Identidade visual
 
 Tema dark forte: fundo `#0A0E14`, superfícies `#111722`, bordas `#1E2733`.

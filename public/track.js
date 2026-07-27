@@ -260,23 +260,230 @@
     "click",
     function (event) {
       var anchor = event.target && event.target.closest ? event.target.closest("a[href]") : null;
-      if (!anchor) return;
-      rewriteLink(anchor);
-      if (anchor.__ktrkRewritten) {
-        send("InitiateCheckout", { link_url: anchor.href });
+      if (anchor) {
+        rewriteLink(anchor);
+        if (anchor.__ktrkRewritten) {
+          send("InitiateCheckout", { link_url: anchor.href });
+        }
+      }
+
+      // ── cliques em qualquer elemento com data-track="Nome do Evento" ──
+      var trackEl = event.target && event.target.closest ? event.target.closest("[data-track]") : null;
+      if (trackEl) {
+        var trackName = trackEl.getAttribute("data-track");
+        if (trackName) {
+          send(trackName, {
+            element_tag: trackEl.tagName.toLowerCase(),
+            element_text: (trackEl.textContent || "").trim().slice(0, 200),
+          });
+        }
       }
     },
     true,
   );
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", rewriteAllLinks);
-  } else {
+  // ── vídeo: <video> nativo + embeds do YouTube/Vimeo ─────────────────
+  var boundVideos = typeof WeakSet !== "undefined" ? new WeakSet() : null;
+
+  function videoLabel(video) {
+    return (
+      video.getAttribute("data-video-name") ||
+      video.currentSrc ||
+      video.getAttribute("src") ||
+      video.id ||
+      "video"
+    );
+  }
+
+  function bindHtml5Video(video) {
+    if (boundVideos) {
+      if (boundVideos.has(video)) return;
+      boundVideos.add(video);
+    } else {
+      if (video.__ktrkBound) return;
+      video.__ktrkBound = true;
+    }
+    var played = false;
+    var completed = false;
+    video.addEventListener("play", function () {
+      if (played) return;
+      played = true;
+      send("VideoPlay", { video: videoLabel(video) });
+    });
+    video.addEventListener("ended", function () {
+      if (completed) return;
+      completed = true;
+      send("VideoComplete", { video: videoLabel(video) });
+    });
+  }
+
+  // Embeds do YouTube/Vimeo exigem habilitar a API deles via querystring
+  // pra emitirem postMessage de mudança de estado (play/completo). Não foi
+  // possível validar esse fluxo contra um player ao vivo neste ambiente
+  // (sem acesso de rede aos domínios deles) — se o evento não disparar
+  // pra algum embed específico, conferir se o src original já tinha algum
+  // parâmetro de API conflitante antes da reescrita abaixo.
+  var YOUTUBE_HOST_RE = /(^|\.)(youtube\.com|youtube-nocookie\.com)$/i;
+  var VIMEO_HOST_RE = /(^|\.)player\.vimeo\.com$/i;
+  var embedState = {};
+  var embedCounter = 0;
+
+  function bindEmbed(iframe) {
+    if (iframe.__ktrkEmbedId) return;
+    var src = iframe.getAttribute("src");
+    if (!src) return;
+
+    var url;
+    try {
+      url = new URL(src, window.location.href);
+    } catch (e) {
+      return;
+    }
+
+    var isYouTube = YOUTUBE_HOST_RE.test(url.hostname) && /\/embed\//.test(url.pathname);
+    var isVimeo = VIMEO_HOST_RE.test(url.hostname);
+    if (!isYouTube && !isVimeo) return;
+
+    embedCounter += 1;
+    var id = "ktrk-embed-" + embedCounter;
+    iframe.__ktrkEmbedId = id;
+    embedState[id] = {
+      type: isYouTube ? "youtube" : "vimeo",
+      played: false,
+      completed: false,
+      iframe: iframe,
+    };
+
+    var changed = false;
+    if (isYouTube) {
+      if (!url.searchParams.get("enablejsapi")) {
+        url.searchParams.set("enablejsapi", "1");
+        changed = true;
+      }
+      if (!url.searchParams.get("origin")) {
+        url.searchParams.set("origin", window.location.origin);
+        changed = true;
+      }
+    } else {
+      if (!url.searchParams.get("api")) {
+        url.searchParams.set("api", "1");
+        changed = true;
+      }
+    }
+    if (changed) iframe.setAttribute("src", url.toString());
+
+    iframe.addEventListener("load", function () {
+      try {
+        if (isYouTube) {
+          iframe.contentWindow.postMessage(JSON.stringify({ event: "listening", id: id }), "*");
+        } else {
+          ["play", "ended"].forEach(function (name) {
+            iframe.contentWindow.postMessage(
+              JSON.stringify({ method: "addEventListener", value: name }),
+              "*",
+            );
+          });
+        }
+      } catch (e) {
+        /* postMessage cross-origin nunca deve quebrar a página */
+      }
+    });
+  }
+
+  window.addEventListener("message", function (event) {
+    var data = event.data;
+    if (typeof data === "string") {
+      try {
+        data = JSON.parse(data);
+      } catch (e) {
+        return;
+      }
+    }
+    if (!data || typeof data !== "object") return;
+
+    for (var id in embedState) {
+      if (!Object.prototype.hasOwnProperty.call(embedState, id)) continue;
+      var state = embedState[id];
+      if (state.iframe.contentWindow !== event.source) continue;
+
+      if (state.type === "youtube" && data.info && typeof data.info.playerState !== "undefined") {
+        if (data.info.playerState === 1 && !state.played) {
+          state.played = true;
+          send("VideoPlay", { video: state.iframe.getAttribute("src") });
+        }
+        if (data.info.playerState === 0 && !state.completed) {
+          state.completed = true;
+          send("VideoComplete", { video: state.iframe.getAttribute("src") });
+        }
+      } else if (state.type === "vimeo" && data.event === "play" && !state.played) {
+        state.played = true;
+        send("VideoPlay", { video: state.iframe.getAttribute("src") });
+      } else if (state.type === "vimeo" && data.event === "ended" && !state.completed) {
+        state.completed = true;
+        send("VideoComplete", { video: state.iframe.getAttribute("src") });
+      }
+      break;
+    }
+  });
+
+  function scanVideos() {
+    var videos = document.querySelectorAll("video");
+    for (var i = 0; i < videos.length; i++) bindHtml5Video(videos[i]);
+
+    var iframes = document.querySelectorAll('iframe[src*="youtube"], iframe[src*="vimeo"]');
+    for (var j = 0; j < iframes.length; j++) bindEmbed(iframes[j]);
+  }
+
+  // ── visibilidade de seção: elementos com data-track-view="Nome" ──────
+  var sectionsSent = typeof WeakSet !== "undefined" ? new WeakSet() : null;
+  var sectionObserver = null;
+  if (window.IntersectionObserver) {
+    sectionObserver = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var el = entry.target;
+          if (sectionsSent) {
+            if (sectionsSent.has(el)) return;
+            sectionsSent.add(el);
+          } else {
+            if (el.__ktrkViewSent) return;
+            el.__ktrkViewSent = true;
+          }
+          var name = el.getAttribute("data-track-view");
+          if (name) send(name, { section: name });
+          sectionObserver.unobserve(el);
+        });
+      },
+      { threshold: 0.5 },
+    );
+  }
+
+  function scanSections() {
+    if (!sectionObserver) return;
+    var sections = document.querySelectorAll("[data-track-view]");
+    for (var i = 0; i < sections.length; i++) {
+      if (!sections[i].__ktrkObserved) {
+        sections[i].__ktrkObserved = true;
+        sectionObserver.observe(sections[i]);
+      }
+    }
+  }
+
+  function scanNewContent() {
     rewriteAllLinks();
+    scanVideos();
+    scanSections();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", scanNewContent);
+  } else {
+    scanNewContent();
   }
 
   if (window.MutationObserver) {
-    new MutationObserver(rewriteAllLinks).observe(document.documentElement, {
+    new MutationObserver(scanNewContent).observe(document.documentElement, {
       childList: true,
       subtree: true,
     });
