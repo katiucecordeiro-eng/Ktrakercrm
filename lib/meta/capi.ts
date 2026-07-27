@@ -27,11 +27,11 @@ type SendMetaEventParams = {
 
 export async function sendMetaEvent(
   params: SendMetaEventParams,
-): Promise<SendResult | { status: "skipped"; response: unknown }> {
+): Promise<(SendResult | { status: "skipped"; response: unknown }) & { request: unknown }> {
   const { offer } = params;
 
   if (!offer.meta_pixel_id) {
-    return { status: "skipped", response: { reason: "Oferta sem Pixel ID configurado" } };
+    return { status: "skipped", response: { reason: "Oferta sem Pixel ID configurado" }, request: null };
   }
 
   const token = decryptSecret(offer.meta_capi_token);
@@ -39,6 +39,7 @@ export async function sendMetaEvent(
     return {
       status: "skipped",
       response: { reason: "Token CAPI não configurado para esta oferta" },
+      request: null,
     };
   }
 
@@ -52,18 +53,18 @@ export async function sendMetaEvent(
   if (params.email) userData.em = sha256(params.email);
   if (params.phone) userData.ph = sha256(normalizePhone(params.phone));
 
+  const eventData = {
+    event_name: params.eventName,
+    event_id: params.eventId,
+    event_time: params.eventTime,
+    event_source_url: params.eventSourceUrl || undefined,
+    action_source: "website",
+    user_data: userData,
+    custom_data: params.customData,
+  };
+
   const body: Record<string, unknown> = {
-    data: [
-      {
-        event_name: params.eventName,
-        event_id: params.eventId,
-        event_time: params.eventTime,
-        event_source_url: params.eventSourceUrl || undefined,
-        action_source: "website",
-        user_data: userData,
-        custom_data: params.customData,
-      },
-    ],
+    data: [eventData],
   };
 
   const testEventCode = process.env[metaTestEventCodeEnvName(offer.slug)];
@@ -73,5 +74,8 @@ export async function sendMetaEvent(
 
   const url = `https://graph.facebook.com/${META_API_VERSION}/${offer.meta_pixel_id}/events?access_token=${encodeURIComponent(token)}`;
 
-  return postWithRetry(url, body);
+  // Guarda só o evento em si (user_data já vem hasheado) — nunca o
+  // access_token, que fica só na URL da chamada.
+  const result = await postWithRetry(url, body);
+  return { ...result, request: eventData };
 }

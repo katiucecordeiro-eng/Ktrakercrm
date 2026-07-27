@@ -167,6 +167,7 @@ export async function POST(request: Request) {
           .update({
             meta_status: metaResult.status,
             meta_response: metaResult.response,
+            meta_request: metaResult.request,
             ga4_status: ga4Result.status,
           })
           .eq("id", eventRowId);

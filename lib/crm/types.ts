@@ -56,6 +56,7 @@ export type VisitorEventRow = {
   utm_campaign: string | null;
   meta_status: string;
   meta_response: unknown;
+  meta_request: unknown;
   ga4_status: string;
   created_at: string;
 };

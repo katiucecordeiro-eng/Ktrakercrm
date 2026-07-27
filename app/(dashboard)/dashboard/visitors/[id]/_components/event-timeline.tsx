@@ -77,10 +77,21 @@ export function EventTimeline({ events }: { events: VisitorEventRow[] }) {
                   {event.page_url ? (
                     <p className="truncate text-muted-foreground">URL: {event.page_url}</p>
                   ) : null}
+                  {event.meta_request ? (
+                    <div>
+                      <p className="mb-1 font-medium text-foreground">Enviado à Meta (request)</p>
+                      <pre className="overflow-x-auto rounded bg-surface p-2 font-mono-nums text-[11px] text-muted-foreground">
+                        {JSON.stringify(event.meta_request, null, 2)}
+                      </pre>
+                    </div>
+                  ) : null}
                   {event.meta_response ? (
-                    <pre className="overflow-x-auto rounded bg-surface p-2 font-mono-nums text-[11px] text-muted-foreground">
-                      {JSON.stringify(event.meta_response, null, 2)}
-                    </pre>
+                    <div>
+                      <p className="mb-1 font-medium text-foreground">Resposta da Meta</p>
+                      <pre className="overflow-x-auto rounded bg-surface p-2 font-mono-nums text-[11px] text-muted-foreground">
+                        {JSON.stringify(event.meta_response, null, 2)}
+                      </pre>
+                    </div>
                   ) : (
                     <p className="text-muted-foreground">
                       Sem payload de resposta da Meta registrado para este evento.
