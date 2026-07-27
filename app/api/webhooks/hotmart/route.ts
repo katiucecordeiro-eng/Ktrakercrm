@@ -212,9 +212,13 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
-  const receivedToken = request.headers.get("hottok") || payload.hottok || null;
-  const expectedToken = process.env.HOTMART_HOTTOK;
+  const receivedToken = (request.headers.get("hottok") || payload.hottok || "").trim();
+  const expectedToken = process.env.HOTMART_HOTTOK?.trim();
 
+  // .trim() nos dois lados — um espaço em branco colado sem querer no
+  // valor da env var na Vercel (ou no header/body vindo da Hotmart) faz
+  // essa comparação falhar de um jeito invisível, sem nenhuma pista de
+  // que os valores "parecem" iguais.
   if (expectedToken && receivedToken !== expectedToken) {
     await logWebhook(supabase, payload, "invalid_hottok");
     return NextResponse.json({ ok: false }, { status: 401 });
