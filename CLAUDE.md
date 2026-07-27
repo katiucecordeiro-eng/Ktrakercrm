@@ -206,6 +206,17 @@ recebe eventos novos, nunca histórico).
   projeto (todos os deploys entre a Sprint 4 e a correção falhavam
   silenciosamente por causa disso). Se migrar para o plano Pro, pode
   voltar para um schedule mais frequente.
+- **Server Actions de sync também esbarram em limite da Vercel**: no
+  plano Hobby, toda função serverless (inclusive Server Actions) é morta
+  em 10s por padrão — um período longo com paginação (vendas retroativas
+  Hotmart, gasto Meta) passa disso fácil, e o botão fica preso em
+  "Sincronizando..." sem erro nenhum (a Vercel mata a função no meio,
+  sem resposta JSON pra tratar). Corrigido com `export const maxDuration
+  = 60` (máximo do Hobby) — **mas no `page.tsx` que renderiza o
+  formulário, não no arquivo da action**: Server Actions herdam o
+  `maxDuration` da rota que as invoca; um arquivo `"use server"` só pode
+  exportar funções async, então colocar `maxDuration` lá quebra o build
+  inteiro (`next build` rejeita qualquer export que não seja uma action).
 - `lib/meta/marketing-api.ts`: busca Insights (`level: ad`,
   `time_increment: 1`) com paginação. `lib/meta/sync-ad-spend.ts`: upsert
   em `ad_spend` por `(date, ad_id)`, calculando `cpc`/`cpm`.
