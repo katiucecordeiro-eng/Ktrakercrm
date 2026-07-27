@@ -15,10 +15,14 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { searchVisitors } from "@/lib/crm/queries";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import type { Offer } from "@/lib/types/offer";
+import type { VisitorStatus } from "@/lib/crm/types";
 import type { RawSearchParams } from "@/lib/reports/filters";
 
 import { VisitorsSearch } from "./_components/visitors-search";
 import { StatusBadge } from "./_components/status-badge";
+import { VisitorsFilters } from "./_components/visitors-filters";
+
+const VALID_STATUSES: VisitorStatus[] = ["visitor", "lead", "buyer", "refunded"];
 
 const PAGE_SIZE = 25;
 
@@ -51,6 +55,12 @@ export default async function VisitorsPage({
   const offer = offerSlug ? (offers.find((o) => o.slug === offerSlug) ?? null) : null;
   const search = typeof resolved.q === "string" ? resolved.q : "";
   const page = Math.max(1, Number(resolved.page) || 1);
+  const statusParam = typeof resolved.status === "string" ? resolved.status : null;
+  const status = VALID_STATUSES.includes(statusParam as VisitorStatus)
+    ? (statusParam as VisitorStatus)
+    : null;
+  const since = typeof resolved.since === "string" ? resolved.since : null;
+  const until = typeof resolved.until === "string" ? resolved.until : null;
 
   if (!configured) {
     return (
@@ -68,7 +78,15 @@ export default async function VisitorsPage({
   const supabase = await createClient();
   const { rows, total } = await searchVisitors(
     supabase,
-    { offerId: offer?.id ?? null, search, page, pageSize: PAGE_SIZE },
+    {
+      offerId: offer?.id ?? null,
+      search,
+      page,
+      pageSize: PAGE_SIZE,
+      status,
+      since: since ? new Date(`${since}T00:00:00Z`).toISOString() : null,
+      until: until ? new Date(`${until}T23:59:59Z`).toISOString() : null,
+    },
     offers,
   );
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -77,6 +95,9 @@ export default async function VisitorsPage({
     const params = new URLSearchParams();
     if (offerSlug) params.set("offer", offerSlug);
     if (search) params.set("q", search);
+    if (status) params.set("status", status);
+    if (since) params.set("since", since);
+    if (until) params.set("until", until);
     params.set("page", String(targetPage));
     return `?${params.toString()}`;
   }
@@ -92,6 +113,8 @@ export default async function VisitorsPage({
         </div>
         <VisitorsSearch defaultValue={search} />
       </div>
+
+      <VisitorsFilters status={status} since={since} until={until} />
 
       <Card>
         <CardHeader>

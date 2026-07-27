@@ -9,6 +9,7 @@ import { getVisitorProfile } from "@/lib/crm/queries";
 import { formatCurrency } from "@/lib/format";
 
 import { EventTimeline } from "./_components/event-timeline";
+import { JourneyTimeline } from "./_components/journey-timeline";
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "—";
@@ -66,6 +67,16 @@ export default async function VisitorProfilePage({
       >
         <ArrowLeft className="size-4" /> Voltar
       </Link>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Jornada</CardTitle>
+          <CardDescription>Principais marcos, do primeiro contato até a venda.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <JourneyTimeline events={events} sales={sales} />
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">

@@ -39,10 +39,23 @@ type RawSummaryRow = {
   last_event_at: string | null;
 };
 
+// Não-comprador/reembolsado-nem-lead-nem-reembolsado — traduz deriveStatus
+// pra filtros SQL equivalentes (ver deriveStatus acima: refunded/chargeback
+// > approved > tem lead > senão visitante).
+const CONCLUDED_STATUSES = "(approved,refunded,chargeback)";
+
 export async function searchVisitors(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- builder do supabase-js
   supabase: any,
-  params: { offerId: string | null; search: string; page: number; pageSize?: number },
+  params: {
+    offerId: string | null;
+    search: string;
+    page: number;
+    pageSize?: number;
+    status?: VisitorStatus | null;
+    since?: string | null;
+    until?: string | null;
+  },
   offers: Offer[],
 ): Promise<{ rows: VisitorSummaryRow[]; total: number }> {
   const pageSize = params.pageSize ?? 25;
@@ -53,6 +66,23 @@ export async function searchVisitors(
   if (params.offerId) {
     query = query.eq("offer_id", params.offerId);
   }
+
+  // NOT IN em SQL descarta silenciosamente linhas com sale_status NULL
+  // (a maioria — quem nunca comprou) por causa da lógica de três valores
+  // do SQL; por isso o "não concluído" precisa do OR explícito com IS NULL.
+  const notConcluded = `sale_status.is.null,sale_status.not.in.${CONCLUDED_STATUSES}`;
+  if (params.status === "buyer") {
+    query = query.eq("sale_status", "approved");
+  } else if (params.status === "refunded") {
+    query = query.in("sale_status", ["refunded", "chargeback"]);
+  } else if (params.status === "lead") {
+    query = query.not("lead_email", "is", null).or(notConcluded);
+  } else if (params.status === "visitor") {
+    query = query.is("lead_email", null).or(notConcluded);
+  }
+
+  if (params.since) query = query.gte("last_seen_at", params.since);
+  if (params.until) query = query.lte("last_seen_at", params.until);
 
   const term = params.search.trim().replace(/[,()]/g, "");
   if (term) {

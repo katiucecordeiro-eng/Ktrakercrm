@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { VisitorEventRow } from "@/lib/crm/types";
+import { getEventIcon } from "./event-icon";
 
 function statusVariant(status: string): "default" | "destructive" | "secondary" {
   if (status === "sent") return "default";
@@ -39,12 +40,15 @@ export function EventTimeline({ events }: { events: VisitorEventRow[] }) {
     <div className="flex flex-col">
       {events.map((event, index) => {
         const isOpen = expanded.has(event.id);
+        const Icon = getEventIcon(event.event_name);
         return (
           <div key={event.id} className="relative flex gap-3 pb-4 pl-2">
             {index < events.length - 1 ? (
-              <span className="absolute left-[9px] top-5 h-full w-px bg-border" />
+              <span className="absolute left-[21px] top-7 h-full w-px bg-border" />
             ) : null}
-            <span className="relative z-10 mt-1.5 size-2 shrink-0 rounded-full bg-accent" />
+            <span className="relative z-10 flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-accent">
+              <Icon className="size-3.5" />
+            </span>
             <div className="min-w-0 flex-1">
               <button
                 type="button"
