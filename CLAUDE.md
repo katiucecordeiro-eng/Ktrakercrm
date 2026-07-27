@@ -520,6 +520,21 @@ polish geral) ficam como roteiro para quando a usuária pedir.
   da próxima), com badge de conversão colorido por faixa entre etapas
   (heurística: ≥40% verde, 15–40% âmbar, <15% vermelho — ajustável, não
   vem de nenhum benchmark) e toggle "Funil"/"Tabela".
+- **Etapas do funil ajustadas (pós-lançamento)**: removida "Adições ao
+  carrinho" (a oferta não tem conceito de carrinho — sempre ficava
+  zerada). "Checkouts iniciados" agora vem preferencialmente do
+  `InitiateCheckout` reportado pela própria Meta (`ad_spend.meta_initiate_checkout`,
+  migration `0008`, campo `actions` da Insights API) em vez de só do
+  clique rastreado pelo `track.js` — o clique sub-contava bastante
+  (chegou a mostrar menos checkouts do que vendas aprovadas, logicamente
+  impossível) porque só conta cliques em `<a href>` de checkout Hotmart;
+  cai pro rastreamento próprio só se a Meta não retornar nada (oferta sem
+  Pixel/CAPI). **Nomes de `action_type` da Meta pra InitiateCheckout
+  variam** (`initiate_checkout`, `omni_initiated_checkout`, etc.) — soma
+  qualquer um conhecido, sem confirmação contra uma resposta real de
+  conta com CAPI configurado. Nova etapa "Vendas iniciadas" (qualquer
+  status de `sales`, por `created_at`) antes de "Vendas aprovadas"
+  (só `status = 'approved'`) — eram uma etapa só antes.
 - **Skeleton de loading**: novo `components/ui/skeleton.tsx`
   (`animate-pulse bg-surface-hover`), usado nos 2 `Suspense fallback`
   que antes eram `<div>` sem estilo nenhum (`layout.tsx`, `dashboard/page.tsx`).

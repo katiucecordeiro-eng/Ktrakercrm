@@ -15,12 +15,36 @@ export type MetaInsightRow = {
   clicks: number;
   reach: number;
   frequency: number | null;
+  metaInitiateCheckout: number;
 };
 
 type MetaInsightsResult = { rows: MetaInsightRow[]; error?: string };
 
 function normalizeAdAccountId(adAccountId: string) {
   return adAccountId.startsWith("act_") ? adAccountId : `act_${adAccountId}`;
+}
+
+// A Meta não tem um único nome fixo pra "InitiateCheckout" no campo
+// `actions` — varia conforme a origem do evento (pixel padrão vs. CAPI,
+// pixel novo vs. legado). Soma qualquer action_type conhecido pra evitar
+// contar zero por só ter tentado o nome errado; não pôde ser confirmado
+// contra uma resposta real de uma conta com CAPI configurado.
+const INITIATE_CHECKOUT_ACTION_TYPES = [
+  "initiate_checkout",
+  "omni_initiated_checkout",
+  "offsite_conversion.fb_pixel_initiate_checkout",
+];
+
+function extractInitiateCheckout(actions: unknown): number {
+  if (!Array.isArray(actions)) return 0;
+  let total = 0;
+  for (const action of actions as Record<string, unknown>[]) {
+    const type = action.action_type as string | undefined;
+    if (type && INITIATE_CHECKOUT_ACTION_TYPES.includes(type)) {
+      total += Number(action.value ?? 0);
+    }
+  }
+  return total;
 }
 
 // Busca os Insights da Meta Marketing API no nível de anúncio, com
@@ -48,6 +72,7 @@ export async function fetchMetaInsights(params: {
     "clicks",
     "reach",
     "frequency",
+    "actions",
     "date_start",
   ].join(",");
 
@@ -89,6 +114,7 @@ export async function fetchMetaInsights(params: {
           clicks: Number(item.clicks ?? 0),
           reach: Number(item.reach ?? 0),
           frequency: item.frequency != null ? Number(item.frequency) : null,
+          metaInitiateCheckout: extractInitiateCheckout(item.actions),
         });
       }
 

@@ -35,6 +35,8 @@ type DailyMetricsRow = {
   ad_spend: number;
   clicks: number;
   impressions: number;
+  initiated_count: number;
+  meta_checkouts: number;
 };
 
 async function fetchDailyMetrics(
@@ -59,6 +61,8 @@ async function fetchDailyMetrics(
     ad_spend: Number(row.ad_spend),
     clicks: Number(row.clicks),
     impressions: Number(row.impressions),
+    initiated_count: Number(row.initiated_count),
+    meta_checkouts: Number(row.meta_checkouts),
   }));
 }
 
@@ -156,16 +160,23 @@ export async function getFunnel(
 
   const clicks = dailyRows.reduce((sum, row) => sum + row.clicks, 0);
   const pageviews = funnelRows.reduce((sum, row) => sum + row.pageviews, 0);
-  const addToCart = funnelRows.reduce((sum, row) => sum + row.add_to_cart, 0);
-  const initiateCheckout = funnelRows.reduce((sum, row) => sum + row.initiate_checkout, 0);
-  const purchases = dailyRows.reduce((sum, row) => sum + row.sales_count, 0);
+  const metaCheckouts = dailyRows.reduce((sum, row) => sum + row.meta_checkouts, 0);
+  const trackedCheckouts = funnelRows.reduce((sum, row) => sum + row.initiate_checkout, 0);
+  // Prefere o InitiateCheckout reportado pela própria Meta (pixel/CAPI) —
+  // mais confiável que o clique rastreado pelo track.js (só conta cliques
+  // em links de checkout Hotmart; sub-conta se o checkout usa redirect via
+  // JS, embed, etc. em vez de <a href>). Cai pro rastreamento próprio só
+  // se a Meta não retornou nada (oferta sem Pixel/CAPI configurado).
+  const initiateCheckout = metaCheckouts > 0 ? metaCheckouts : trackedCheckouts;
+  const initiatedSales = dailyRows.reduce((sum, row) => sum + row.initiated_count, 0);
+  const approvedSales = dailyRows.reduce((sum, row) => sum + row.sales_count, 0);
 
   const counts = [
     { label: "Cliques", count: clicks },
     { label: "Visualizações de página", count: pageviews },
-    { label: "Adições ao carrinho", count: addToCart },
     { label: "Checkouts iniciados", count: initiateCheckout },
-    { label: "Compras realizadas", count: purchases },
+    { label: "Vendas iniciadas", count: initiatedSales },
+    { label: "Vendas aprovadas", count: approvedSales },
   ];
 
   const first = counts[0]?.count || 0;

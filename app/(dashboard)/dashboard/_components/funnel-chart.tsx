@@ -37,8 +37,8 @@ export function FunnelChart({ steps }: { steps: FunnelStep[] }) {
         <div>
           <CardTitle>Funil de conversão</CardTitle>
           <CardDescription>
-            Cliques → página → carrinho → checkout → compra, com taxa de conversão
-            entre cada etapa.
+            Cliques → página → checkout iniciado → venda iniciada → venda aprovada,
+            com taxa de conversão entre cada etapa.
           </CardDescription>
         </div>
         <div className="flex gap-1 rounded-md border border-border p-1">

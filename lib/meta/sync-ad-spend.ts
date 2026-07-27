@@ -66,6 +66,7 @@ export async function syncOfferAdSpend(
         clicks: row.clicks,
         reach: row.reach,
         frequency: row.frequency,
+        meta_initiate_checkout: row.metaInitiateCheckout,
         cpc: row.clicks > 0 ? row.spend / row.clicks : null,
         cpm: row.impressions > 0 ? (row.spend / row.impressions) * 1000 : null,
         synced_at: new Date().toISOString(),
