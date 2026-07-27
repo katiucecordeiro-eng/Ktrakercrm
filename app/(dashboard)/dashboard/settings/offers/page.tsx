@@ -1,5 +1,11 @@
 import { Plus, Pencil } from "lucide-react";
 
+// As Server Actions de sincronização desta página (vendas retroativas
+// Hotmart, gasto Meta) fazem chamadas paginadas que podem passar dos 10s
+// que a Vercel dá por padrão no plano Hobby — Server Actions herdam o
+// maxDuration da rota que as invoca, não o próprio arquivo da action.
+export const maxDuration = 60;
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

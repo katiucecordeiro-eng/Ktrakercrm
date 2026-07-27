@@ -1,5 +1,10 @@
 import { Suspense } from "react";
 
+// O botão "Atualizar" chama refreshDashboardDataAction (Server Action),
+// que sincroniza todas as ofertas ativas — Server Actions herdam o
+// maxDuration da rota que as invoca, não o do arquivo da action em si.
+export const maxDuration = 60;
+
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getPreviousPeriodFilters, parseReportFilters, type RawSearchParams } from "@/lib/reports/filters";
