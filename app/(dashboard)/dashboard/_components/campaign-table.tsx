@@ -64,7 +64,17 @@ function MetricsCells({
   );
 }
 
-export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currency: string }) {
+export function CampaignTable({
+  rows,
+  currency,
+  showStatus = false,
+  onExportCsv,
+}: {
+  rows: CampaignRow[];
+  currency: string;
+  showStatus?: boolean;
+  onExportCsv?: () => void;
+}) {
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [expandedAdsets, setExpandedAdsets] = useState<Set<string>>(new Set());
   const [showMore, setShowMore] = useState(false);
@@ -104,9 +114,16 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
             {ROAS_THRESHOLD}x.
           </CardDescription>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => setShowMore((v) => !v)}>
-          {showMore ? "Menos colunas" : "Mais colunas"}
-        </Button>
+        <div className="flex gap-2">
+          {onExportCsv ? (
+            <Button type="button" variant="outline" size="sm" onClick={onExportCsv}>
+              Exportar CSV
+            </Button>
+          ) : null}
+          <Button type="button" variant="outline" size="sm" onClick={() => setShowMore((v) => !v)}>
+            {showMore ? "Menos colunas" : "Mais colunas"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
@@ -118,6 +135,7 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
             <TableHeader>
               <TableRow>
                 <TableHead>Campanha</TableHead>
+                {showStatus ? <TableHead>Status</TableHead> : null}
                 <TableHead>Gasto</TableHead>
                 <TableHead>Faturamento</TableHead>
                 <TableHead>Vendas</TableHead>
@@ -138,6 +156,15 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
             <TableBody>
               {rows.map((campaign) => {
                 const campaignOpen = expandedCampaigns.has(campaign.id);
+                if (campaign.unattributed) {
+                  return (
+                    <TableRow key={campaign.id} className="bg-surface/40">
+                      <TableCell className="italic text-muted-foreground">{campaign.name}</TableCell>
+                      {showStatus ? <TableCell>—</TableCell> : null}
+                      <MetricsCells row={campaign} currency={currency} showMore={showMore} />
+                    </TableRow>
+                  );
+                }
                 return (
                   <Fragment key={campaign.id}>
                     <TableRow className="cursor-pointer" onClick={() => toggleCampaign(campaign.id)}>
@@ -149,6 +176,13 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
                         )}
                         <span className="max-w-[280px] truncate">{campaign.name}</span>
                       </TableCell>
+                      {showStatus ? (
+                        <TableCell>
+                          <Badge variant={campaign.status === "ativo" ? "default" : "secondary"}>
+                            {campaign.status === "ativo" ? "Ativa" : "Pausada"}
+                          </Badge>
+                        </TableCell>
+                      ) : null}
                       <MetricsCells row={campaign} currency={currency} showMore={showMore} />
                     </TableRow>
                     {campaignOpen &&
@@ -169,6 +203,7 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
                                 )}
                                 <span className="max-w-[240px] truncate">{adset.name}</span>
                               </TableCell>
+                              {showStatus ? <TableCell /> : null}
                               <MetricsCells row={adset} currency={currency} showMore={showMore} />
                             </TableRow>
                             {adsetOpen &&
@@ -180,6 +215,7 @@ export function CampaignTable({ rows, currency }: { rows: CampaignRow[]; currenc
                                   <TableCell className="pl-14 text-muted-foreground">
                                     <span className="max-w-[220px] truncate">{ad.name}</span>
                                   </TableCell>
+                                  {showStatus ? <TableCell /> : null}
                                   <MetricsCells row={ad} currency={currency} showMore={showMore} />
                                 </TableRow>
                               ))}

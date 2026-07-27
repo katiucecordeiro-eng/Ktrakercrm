@@ -298,7 +298,7 @@ type CampaignPerformanceRow = {
   sales_count: number;
 };
 
-function computeAdMetrics(base: {
+export function computeAdMetrics(base: {
   spend: number;
   revenue: number;
   salesCount: number;

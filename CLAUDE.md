@@ -642,6 +642,60 @@ Intelligence) e F (polish geral) continuam como roteiro em aberto.
     cada mutação do DOM (um único `MutationObserver`, em vez de um
     separado só pra links como antes).
 
+### Aba de Campanhas ("Sprint D", pós-lançamento)
+
+Nova página `/dashboard/campaigns` (item "Campanhas" na sidebar), com
+drill-down campanha → conjunto → criativo igual ao da Visão Geral, mas com
+período/oferta próprios (reaproveita `PeriodSwitcher`/`OfferSwitcher`
+globais), filtro de status, cards de resumo, 2 gráficos e export CSV.
+
+- **Atribuição de venda com fallback em 3 níveis** (`lib/reports/campaigns.ts#resolveCampaignId`),
+  resolvendo o problema de `sales.campaign_id` não bater com nenhuma
+  campanha real quando o anúncio não segue a convenção de UTM:
+  1. **Match exato** — `sales.campaign_id` (extraído do `utm_campaign` pela
+     convenção `{{id}}--{{name}}`) contra os `campaign_id` reais vindos do
+     `ad_spend` (sincronizado da Meta Insights).
+  2. **Mapeamento manual** — tabela `campaign_utm_mappings` (migration
+     `0010`), cadastrada em Configurações → Ofertas → botão "Mapear UTMs"
+     (`campaign-mapping-dialog.tsx`): usuária cola o `utm_campaign` bruto
+     que veio na venda e escolhe a campanha real (dropdown das campanhas
+     já sincronizadas nessa oferta).
+  3. **Fallback por nome** — normaliza (`lowercase`, remove pontuação) o
+     `utm_campaign` bruto e o nome de cada campanha real da mesma oferta;
+     casa se um contém o outro.
+  Sem nenhum dos três, a venda cai no bucket **"Sem atribuição de
+  campanha"** (linha própria, itálica, sem gasto) em vez de virar uma
+  campanha-fantasma com gasto zerado (como a atribuição só-exata fazia
+  antes). **Atribuição por mapeamento manual/fallback só sobe até o nível
+  de campanha** — revenue/vendas não descem pra conjunto/criativo nesses
+  dois casos (só no match exato, que também casa `adset_id`/`ad_id`),
+  porque não há confiança suficiente pra apontar um criativo específico.
+- **Status ativo/pausado é uma heurística, não vem da Meta**: campanha com
+  gasto > 0 no período selecionado = "Ativa", senão "Pausada"
+  (`lib/reports/campaigns.ts`, campo `status` em `CampaignRow`) — a Meta
+  exigiria uma chamada extra à API pra buscar `effective_status` da
+  campanha, que não foi implementada nesta rodada.
+- **Cards de resumo** (`campaign-summary-cards.tsx`): melhor campanha,
+  melhor criativo, pior campanha (candidata a pausar), custo total do
+  período, ROAS médio ponderado — todos calculados sobre as mesmas linhas
+  já carregadas (`getCampaignSummary`), sem query extra.
+- **Gráficos**: `top-creatives-chart.tsx` (barra horizontal, top 5
+  criativos com gasto > 0 por ROAS) e `roas-trend-chart.tsx` (linha,
+  ROAS por dia = `gross_revenue / ad_spend` da própria view
+  `daily_metrics`, sempre por dia — sem seguir a granularidade
+  hora/dia/semana/mês do resto do dashboard, já que o pedido original
+  era especificamente "por dia").
+- **Exportar CSV** (`campaigns-table-section.tsx` + `lib/utils/csv.ts`):
+  gerado 100% client-side (sem round-trip ao servidor, os dados já estão
+  na página) — `Blob` + link `download`, com BOM UTF-8 pra abrir certo no
+  Excel com acentos/`R$`.
+- **`CampaignTable` (componente compartilhado com a Visão Geral)** ganhou
+  2 props opcionais (`showStatus`, `onExportCsv`) em vez de duplicar o
+  componente — a Visão Geral continua usando sem nenhum dos dois.
+- **Toggle de colunas** do pedido original ("métricas exibidas") já existia
+  como botão "Mais colunas" (Sprint A/B) — reaproveitado como está, sem
+  criar um segundo controle de colunas.
+
 ## Identidade visual
 
 Tema dark forte: fundo `#0A0E14`, superfícies `#111722`, bordas `#1E2733`.

@@ -29,6 +29,7 @@ import { AccountSpendDialog } from "./account-spend-dialog";
 import { HotmartSyncDialog } from "./hotmart-sync-dialog";
 import { ConnectionTestDialog } from "./connection-test-dialog";
 import { RecentWebhooks } from "./recent-webhooks";
+import { CampaignMappingDialog, type CampaignOption, type CampaignMappingRow } from "./campaign-mapping-dialog";
 
 async function getOffers(): Promise<Offer[]> {
   if (!isSupabaseConfigured()) return [];
@@ -44,8 +45,69 @@ async function getOffers(): Promise<Offer[]> {
   }
 }
 
+// Campanhas reais distintas (sincronizadas da Meta) por oferta — usadas
+// como opções no mapeamento manual de UTM (Sprint D). Sem filtro de data:
+// qualquer campanha já sincronizada alguma vez serve como alvo do mapeamento.
+async function getCampaignOptionsByOffer(): Promise<Map<string, CampaignOption[]>> {
+  const byOffer = new Map<string, CampaignOption[]>();
+  if (!isSupabaseConfigured()) return byOffer;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("ad_spend")
+      .select("offer_id, campaign_id, campaign_name")
+      .order("campaign_name", { ascending: true });
+    const seen = new Set<string>();
+    for (const row of (data as { offer_id: string; campaign_id: string; campaign_name: string | null }[] | null) ?? []) {
+      const key = `${row.offer_id}::${row.campaign_id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const list = byOffer.get(row.offer_id) ?? [];
+      list.push({ id: row.campaign_id, name: row.campaign_name || row.campaign_id });
+      byOffer.set(row.offer_id, list);
+    }
+    return byOffer;
+  } catch {
+    return byOffer;
+  }
+}
+
+async function getMappingsByOffer(
+  campaignOptionsByOffer: Map<string, CampaignOption[]>,
+): Promise<Map<string, CampaignMappingRow[]>> {
+  const byOffer = new Map<string, CampaignMappingRow[]>();
+  if (!isSupabaseConfigured()) return byOffer;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("campaign_utm_mappings")
+      .select("id, offer_id, raw_utm_campaign, campaign_id, campaign_name")
+      .order("created_at", { ascending: false });
+    for (const row of (data as
+      | { id: string; offer_id: string; raw_utm_campaign: string; campaign_id: string; campaign_name: string | null }[]
+      | null) ?? []) {
+      const list = byOffer.get(row.offer_id) ?? [];
+      const knownName = campaignOptionsByOffer
+        .get(row.offer_id)
+        ?.find((option) => option.id === row.campaign_id)?.name;
+      list.push({
+        id: row.id,
+        rawUtmCampaign: row.raw_utm_campaign,
+        campaignId: row.campaign_id,
+        campaignName: row.campaign_name || knownName || null,
+      });
+      byOffer.set(row.offer_id, list);
+    }
+    return byOffer;
+  } catch {
+    return byOffer;
+  }
+}
+
 export default async function OffersPage() {
   const offers = await getOffers();
+  const campaignOptionsByOffer = await getCampaignOptionsByOffer();
+  const mappingsByOffer = await getMappingsByOffer(campaignOptionsByOffer);
 
   return (
     <div className="flex flex-col gap-6">
@@ -120,6 +182,11 @@ export default async function OffersPage() {
                         <AccountSpendDialog offerId={offer.id} />
                         <HotmartSyncDialog offerId={offer.id} />
                         <ConnectionTestDialog offerId={offer.id} slug={offer.slug} />
+                        <CampaignMappingDialog
+                          offerId={offer.id}
+                          campaignOptions={campaignOptionsByOffer.get(offer.id) ?? []}
+                          mappings={mappingsByOffer.get(offer.id) ?? []}
+                        />
                         <OfferFormDialog
                           offer={safeOffer}
                           maskedSecrets={maskedSecrets}

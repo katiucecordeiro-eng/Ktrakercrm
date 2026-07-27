@@ -65,10 +65,26 @@ export type CampaignAdRow = {
   cpc: number | null;
   cpm: number | null;
   frequency: number | null;
+  // Só preenchido a nível de campanha (aba Campanhas) — heurística: gasto
+  // > 0 no período selecionado = "ativa" (não vem da Meta, que exigiria uma
+  // chamada extra pra buscar effective_status da campanha).
+  status?: "ativo" | "pausado";
 };
 
 export type CampaignRow = CampaignAdRow & {
   adsets: (CampaignAdRow & { ads: CampaignAdRow[] })[];
+  // Marca a linha especial de vendas que não puderam ser atribuídas a
+  // nenhuma campanha real (nem por ID exato, nem por fallback/mapeamento
+  // manual) — sempre a última da lista, sem adsets.
+  unattributed?: boolean;
+};
+
+export type RoasPoint = {
+  bucket: string;
+  label: string;
+  spend: number;
+  revenue: number;
+  roas: number | null;
 };
 
 export type PaymentBreakdownRow = {
