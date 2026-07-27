@@ -9,7 +9,12 @@ import { encryptSecret } from "@/lib/crypto/secrets";
 
 export type OfferActionState = { error?: string; success?: boolean } | undefined;
 
-const SECRET_FIELDS = ["meta_capi_token", "meta_ads_token", "ga4_api_secret"] as const;
+const SECRET_FIELDS = [
+  "meta_capi_token",
+  "meta_ads_token",
+  "ga4_api_secret",
+  "instagram_access_token",
+] as const;
 
 function parseForm(formData: FormData) {
   return offerFormSchema.safeParse(Object.fromEntries(formData));

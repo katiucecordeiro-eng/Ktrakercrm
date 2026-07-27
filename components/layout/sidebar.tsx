@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, Megaphone, Settings, LogOut, X } from "lucide-react";
+import { LayoutDashboard, Users, Megaphone, Sparkles, Settings, LogOut, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { logout } from "@/lib/auth/actions";
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Visão Geral", icon: LayoutDashboard },
   { href: "/dashboard/visitors", label: "CRM / Visitantes", icon: Users },
   { href: "/dashboard/campaigns", label: "Campanhas", icon: Megaphone },
+  { href: "/dashboard/meta-intelligence", label: "Meta Intelligence", icon: Sparkles },
   { href: "/dashboard/settings/offers", label: "Configurações", icon: Settings },
 ];
 

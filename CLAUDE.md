@@ -696,6 +696,64 @@ globais), filtro de status, cards de resumo, 2 gráficos e export CSV.
   como botão "Mais colunas" (Sprint A/B) — reaproveitado como está, sem
   criar um segundo controle de colunas.
 
+### Aba Meta Business Intelligence ("Sprint E", pós-lançamento)
+
+Nova página `/dashboard/meta-intelligence` (item "Meta Intelligence" na
+sidebar), com 3 seções independentes. **Seções 1 e 2 exigem uma oferta
+específica selecionada** (não funcionam em "todas as ofertas", já que
+cada oferta tem sua própria conta de anúncio/conta comercial do
+Instagram) — a seção 3 funciona nos dois modos, igual ao resto do CRM.
+
+- **Seção 1 — performance de criativos pagos** (`lib/reports/creative-insights.ts`
+  + `creative-performance-table.tsx`): para cada anúncio com gasto no
+  período, calcula um **score de maturidade** (`saturado`/`escalável`/
+  `neutro`) cruzando frequência atual com a variação de CTR vs. o período
+  anterior (`getPreviousPeriodFilters`, já existente da Sprint A) —
+  **heurística com limiares fixos e ajustáveis, não vem de nenhum
+  benchmark da Meta** (`SATURATION_FREQUENCY_THRESHOLD = 3`,
+  `SATURATION_CTR_DROP_PCT = 15%`, `SCALABLE_FREQUENCY_THRESHOLD = 1.5`,
+  `SCALABLE_CTR_THRESHOLD = 1.5%`, em `creative-insights.ts`). Cada
+  combinação gera uma recomendação automática (Pausar / Escalar
+  orçamento / Testar variação). **Thumbnail do criativo**
+  (`lib/meta/creative.ts#fetchAdThumbnails`) busca `creative.thumbnail_url`
+  via o endpoint multi-ID da Graph API (`GET /?ids=a,b,c`) — **não pôde
+  ser validado contra uma conta real neste ambiente**; sem thumbnail (ou
+  sem token da Marketing API configurado), mostra um ícone de imagem
+  quebrada em vez de tentar renderizar uma URL vazia. Ordenação (ROAS/
+  CTR/gasto/saturação) é só client-side, sem nova query.
+- **Seção 2 — posts orgânicos do Instagram** (`lib/instagram/api-client.ts`
+  + `instagram-posts-section.tsx`): novo par de campos por oferta —
+  `offers.instagram_business_account_id` (texto puro, como
+  `meta_ad_account_id`) e `offers.instagram_access_token` (criptografado,
+  mesmo esquema AES de `meta_capi_token` — migration `0011`). **Sem os
+  dois configurados, mostra um card com instruções** em vez de tentar a
+  chamada (`NotConfiguredCard`). Busca até 30 posts recentes
+  (`GET /{ig-user-id}/media`) e, para cada um, os insights
+  (`reach,impressions,saved` via `GET /{media-id}/insights`) — **não pôde
+  ser validado contra uma conta real neste ambiente**; a Instagram Graph
+  API já depreciou `impressions` para alguns tipos de mídia (Reels) e
+  isso não foi confirmado ao vivo — se o insight de um post falhar, ele
+  entra na lista com métricas zeradas em vez de derrubar o lote inteiro.
+  Taxa de engajamento = `(curtidas + comentários + salvamentos) ÷
+  alcance`; badge "💡 Potencial para anunciar" quando acima da média dos
+  posts retornados (não de um benchmark de mercado).
+- **Seção 3 — jornada de maturidade do lead** (`lib/reports/lead-maturity.ts`
+  + `lead-maturity-section.tsx`): classifica cada visitante em Frio (1
+  contato) / Morno (2+ dias distintos com `PageView`) / Quente (tem
+  `InitiateCheckout` mas não comprou) / Comprador (venda aprovada) /
+  Embaixador (comprou e depois teve um `PageView` posterior ao
+  `approved_at`) — a partir dos mesmos `events`/`sales`/`visitor_summary`
+  já existentes, sem tabela nova. **Não é filtrada por período** (é o
+  estado atual da jornada, não uma métrica de um recorte de datas) — só
+  por oferta, como o resto do CRM. Donut de distribuição + tabela de
+  visitantes "quentes" (até 50, mais recentes primeiro) com link direto
+  pro perfil do visitante.
+- **Campo de filtro "campanha/conjunto" da seção 1** do pedido original
+  **não foi implementado** — a oferta selecionada já reduz bastante o
+  escopo, e adicionar um segundo nível de filtro específico dessa tabela
+  ficou como refinamento futuro (a ordenação client-side cobre a
+  necessidade mais comum, que é achar o pior/melhor criativo rápido).
+
 ## Identidade visual
 
 Tema dark forte: fundo `#0A0E14`, superfícies `#111722`, bordas `#1E2733`.

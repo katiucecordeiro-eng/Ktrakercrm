@@ -19,12 +19,16 @@ import { Switch } from "@/components/ui/switch";
 import type { Offer } from "@/lib/types/offer";
 import { createOffer, updateOffer, type OfferActionState } from "./actions";
 
-type SafeOffer = Omit<Offer, "meta_capi_token" | "meta_ads_token" | "ga4_api_secret">;
+type SafeOffer = Omit<
+  Offer,
+  "meta_capi_token" | "meta_ads_token" | "ga4_api_secret" | "instagram_access_token"
+>;
 
 type MaskedSecrets = {
   metaCapiToken: string | null;
   metaAdsToken: string | null;
   ga4ApiSecret: string | null;
+  instagramAccessToken: string | null;
 };
 
 export function OfferFormDialog({
@@ -119,6 +123,19 @@ export function OfferFormDialog({
               label="GA4 API secret"
               name="ga4_api_secret"
               masked={maskedSecrets?.ga4ApiSecret}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field
+              label="Instagram Business Account ID"
+              name="instagram_business_account_id"
+              defaultValue={offer?.instagram_business_account_id ?? ""}
+              placeholder="17841400000000000"
+            />
+            <SecretField
+              label="Token Instagram Graph API"
+              name="instagram_access_token"
+              masked={maskedSecrets?.instagramAccessToken}
             />
           </div>
           <ProductIdsField defaultValue={offer?.hotmart_product_ids ?? []} />

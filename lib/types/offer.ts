@@ -14,6 +14,10 @@ export type Offer = {
   ga4_api_secret_ref: string | null;
   /** GA4 API secret colado no formulário, criptografado. */
   ga4_api_secret: string | null;
+  /** ID da conta comercial do Instagram (não é secreto). */
+  instagram_business_account_id: string | null;
+  /** Token do Instagram Graph API colado no formulário, criptografado. */
+  instagram_access_token: string | null;
   hotmart_product_ids: string[];
   currency: string;
   tax_rate: number;

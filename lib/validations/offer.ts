@@ -14,6 +14,8 @@ export const offerFormSchema = z.object({
   meta_ads_token: z.string().trim().optional().or(z.literal("")),
   ga4_measurement_id: z.string().trim().optional().or(z.literal("")),
   ga4_api_secret: z.string().trim().optional().or(z.literal("")),
+  instagram_business_account_id: z.string().trim().optional().or(z.literal("")),
+  instagram_access_token: z.string().trim().optional().or(z.literal("")),
   hotmart_product_ids: z
     .string()
     .trim()

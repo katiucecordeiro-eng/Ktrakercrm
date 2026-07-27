@@ -155,11 +155,13 @@ export default async function OffersPage() {
               </TableHeader>
               <TableBody>
                 {offers.map((offer) => {
-                  const { meta_capi_token, meta_ads_token, ga4_api_secret, ...safeOffer } = offer;
+                  const { meta_capi_token, meta_ads_token, ga4_api_secret, instagram_access_token, ...safeOffer } =
+                    offer;
                   const maskedSecrets = {
                     metaCapiToken: maskSecret(meta_capi_token),
                     metaAdsToken: maskSecret(meta_ads_token),
                     ga4ApiSecret: maskSecret(ga4_api_secret),
+                    instagramAccessToken: maskSecret(instagram_access_token),
                   };
                   return (
                     <TableRow key={offer.id}>
