@@ -100,6 +100,16 @@ export function OfferFormDialog({
               masked={maskedSecrets?.metaCapiToken}
             />
           </div>
+          <Field
+            label="Código de teste (Meta Test Events)"
+            name="meta_test_event_code"
+            defaultValue={offer?.meta_test_event_code ?? ""}
+            placeholder="TEST12345"
+          />
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Opcional — cole o código que a Meta mostra em Gerenciador de Eventos → Test Events pra
+            validar os eventos dessa oferta em tempo real. Não é um token secreto.
+          </p>
           <div className="grid grid-cols-2 gap-4">
             <Field
               label="Meta Ad Account ID (gasto de anúncios)"

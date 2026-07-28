@@ -115,9 +115,13 @@ deduplicação client/server na Meta.
   `user_data` da Meta (`lib/crypto/hash.ts`) e são removidos do
   `custom_data`/params antes de repassar a GA4 (nunca PII em texto puro
   fora do `user_data`).
-- `test_event_code`: por convenção de env var, sem precisar de coluna no
-  banco — `META_TEST_EVENT_CODE_<SLUG-EM-MAIÚSCULAS-COM-UNDERSCORE>` (ver
-  `lib/meta/capi.ts#metaTestEventCodeEnvName`).
+- `test_event_code`: campo `offers.meta_test_event_code` (migration `0014`,
+  pós-lançamento) — colado direto no formulário da oferta, em texto puro
+  (não é segredo, a própria Meta exibe esse código na tela de Test
+  Events). Fallback pra env var legada `META_TEST_EVENT_CODE_<SLUG-EM-MAIÚSCULAS-COM-UNDERSCORE>`
+  (ver `lib/meta/capi.ts#metaTestEventCodeEnvName`) só pra quem configurou
+  antes desse campo existir — cadastrar uma oferta nova não depende mais
+  de nenhuma env var por slug.
 - Geo (cidade/estado/país) é lida dos headers `x-vercel-ip-*`, presentes
   automaticamente em produção na Vercel; localmente ficam vazios (não é um
   serviço de geo-IP à parte).
@@ -436,7 +440,7 @@ Ver `.env.example` — documenta cada uma. Resumo:
 | `SECRETS_ENCRYPTION_KEY` | criptografa os tokens colados por oferta (Meta CAPI, Marketing API, GA4) — única, gerada uma vez, nunca por oferta |
 | `HOTMART_HOTTOK` | valida o header `hottok` no webhook |
 | `HOTMART_CLIENT_ID` / `HOTMART_CLIENT_SECRET` / `HOTMART_BASIC_TOKEN` | API de Vendas da Hotmart, só para o backfill manual de vendas retroativas — as 3 vêm da mesma tela de credenciais |
-| `META_TEST_EVENT_CODE_<OFERTA>` | validação no Test Events da Meta (ainda por env var, derivada do slug) |
+| `META_TEST_EVENT_CODE_<OFERTA>` | fallback legado — o código de Test Events agora é o campo `offers.meta_test_event_code` no formulário; só usada se a oferta não tiver esse campo preenchido |
 | `META_MARKETING_API_ACCESS_TOKEN` | fallback legado se uma oferta não tiver `meta_ads_token` próprio configurado |
 | `CRON_SECRET` | protege `/api/cron/meta-spend`; a Vercel injeta o header automaticamente quando definida |
 | `NEXT_PUBLIC_APP_URL` | usada em CORS e nos snippets de instalação |
@@ -446,6 +450,53 @@ Token CAPI (`offers.meta_capi_token`), token da Marketing API
 são env vars — são colados direto no formulário de cada oferta em
 Configurações e salvos criptografados no banco (ver seção "Segredos por
 oferta" abaixo).
+
+### Cadastrar uma oferta nova (multi-oferta, sem tocar em Vercel/Supabase)
+
+Todas as env vars acima são **globais, configuradas uma única vez** (uma
+conta Hotmart, uma chave de criptografia, um app na Vercel) — nenhuma delas
+é por oferta. Cadastrar a 2ª, 3ª, 4ª... oferta é 100% pelo formulário em
+Configurações → Ofertas → "Nova oferta", sem precisar editar nada na
+Vercel nem no Supabase:
+
+1. **Nova oferta** no formulário: nome, slug (usado no `data-offer` do
+   snippet), domínio real da página (ativa CORS restrito — sem isso, fica
+   permissivo, o que funciona mas é menos seguro), moeda, imposto (%), meta
+   de ROAS e fuso horário (opcionais, default 2x/`America/Sao_Paulo`).
+2. **Pixel da Meta**: criar um Pixel novo (ou reaproveitar um existente) no
+   Gerenciador de Eventos da Meta para essa oferta/produto, colar o Pixel
+   ID e gerar+colar um token de acesso da Conversions API (Configurações do
+   Pixel → Conversions API → Gerar token de acesso).
+3. **Conta de anúncio** (se for rodar Meta Ads pra essa oferta): Ad Account
+   ID + um token da Marketing API com permissão `ads_read`/`ads_management`
+   nessa conta (token de longa duração, não o de 1-2h do Graph API
+   Explorer — ver conversa anterior sobre o problema de token de curta
+   duração).
+4. **GA4** (se for usar): Measurement ID + API secret (Admin → Fluxos de
+   dados → API secrets, no GA4).
+5. **Produtos Hotmart**: adicionar o(s) ID(s) numérico(s) do(s) produto(s)
+   dessa oferta (chips, Enter pra adicionar) — é assim que o webhook
+   (URL única, já configurada, compartilhada por todas as ofertas da mesma
+   conta Hotmart) sabe pra qual oferta cada venda pertence.
+6. **Instagram** (opcional, Meta Intelligence): Instagram Business Account
+   ID + token com `instagram_basic`/`instagram_insights`.
+7. **Código de Test Events da Meta** (opcional, só validação): colar o
+   código que a própria Meta mostra em Gerenciador de Eventos → Test
+   Events.
+8. **Instalar o `track.js`** na página nova: botão "Instalação" na linha
+   dessa oferta gera o snippet pronto (já com o slug certo) pra colar no
+   WordPress (footer/header, via plugin de código ou Elementor Pro Custom
+   Code — ver `install-snippet-dialog.tsx`).
+9. **Rodar o diagnóstico** ("Diagnóstico" na linha da oferta): testa Meta
+   CAPI, Marketing API e o caminho do `/api/track` de ponta a ponta antes
+   de considerar a oferta pronta.
+10. Se a oferta já tiver vendas históricas na Hotmart antes de configurar
+    o webhook: usar "Vendas retroativas" pra importar o histórico.
+
+Nenhum desses passos exige redeploy, migration nova ou variável de
+ambiente — o único motivo pra mexer na Vercel seria trocar uma env var
+**global** (ex. rotacionar `HOTMART_HOTTOK` se a Hotmart mudar o token da
+conta), o que não tem relação com quantas ofertas existem.
 
 ## Comandos
 

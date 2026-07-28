@@ -67,7 +67,10 @@ export async function sendMetaEvent(
     data: [eventData],
   };
 
-  const testEventCode = process.env[metaTestEventCodeEnvName(offer.slug)];
+  // Campo do formulário da oferta é a fonte principal (não exige redeploy
+  // pra cadastrar uma oferta nova); env var por slug fica só como fallback
+  // legado pra quem configurou antes desse campo existir.
+  const testEventCode = offer.meta_test_event_code || process.env[metaTestEventCodeEnvName(offer.slug)];
   if (testEventCode) {
     body.test_event_code = testEventCode;
   }

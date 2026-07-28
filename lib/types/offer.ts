@@ -7,6 +7,8 @@ export type Offer = {
   meta_capi_token_ref: string | null;
   /** Token CAPI colado no formulário, criptografado (AES-256-GCM). */
   meta_capi_token: string | null;
+  /** Código do Meta Test Events (não é segredo — a própria Meta exibe na tela de Test Events). */
+  meta_test_event_code: string | null;
   meta_ad_account_id: string | null;
   /** Token da Marketing API colado no formulário, criptografado. */
   meta_ads_token: string | null;
