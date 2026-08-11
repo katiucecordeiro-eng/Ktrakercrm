@@ -24,27 +24,37 @@ export async function syncOfferAdSpendAction(
     return { error: "Informe o período (de/até)." };
   }
 
-  const supabase = await createClient();
-  const { data: offer, error: offerError } = await supabase
-    .from("offers")
-    .select("*")
-    .eq("id", offerId)
-    .single();
+  try {
+    const supabase = await createClient();
+    const { data: offer, error: offerError } = await supabase
+      .from("offers")
+      .select("*")
+      .eq("id", offerId)
+      .single();
 
-  if (offerError || !offer) {
-    return { error: "Oferta não encontrada." };
+    if (offerError || !offer) {
+      return { error: "Oferta não encontrada." };
+    }
+
+    if (!(offer as Offer).meta_ad_account_id) {
+      return { error: "Cadastre o Meta Ad Account ID da oferta antes de sincronizar." };
+    }
+
+    const result = await syncOfferAdSpend(supabase, offer as Offer, since, until);
+    revalidatePath("/dashboard/settings/offers");
+
+    if (result.error) {
+      return { error: result.error };
+    }
+
+    return { success: `${result.rows ?? 0} linha(s) de gasto sincronizada(s).` };
+  } catch (error) {
+    // Nunca deixa uma falha inesperada (rede, timeout, token expirado no
+    // meio da paginação) derrubar a página inteira sem resposta — melhor
+    // mostrar o erro no diálogo do que a tela genérica "couldn't load".
+    console.error("[sync-actions] falha ao sincronizar gasto", error);
+    return {
+      error: error instanceof Error ? error.message : "Falha inesperada ao sincronizar gasto.",
+    };
   }
-
-  if (!(offer as Offer).meta_ad_account_id) {
-    return { error: "Cadastre o Meta Ad Account ID da oferta antes de sincronizar." };
-  }
-
-  const result = await syncOfferAdSpend(supabase, offer as Offer, since, until);
-  revalidatePath("/dashboard/settings/offers");
-
-  if (result.error) {
-    return { error: result.error };
-  }
-
-  return { success: `${result.rows ?? 0} linha(s) de gasto sincronizada(s).` };
 }
