@@ -16,6 +16,8 @@ import {
   extractPurchaseValue,
   extractPayment,
   extractIdFromUtm,
+  extractOrderDate,
+  extractApprovedDate,
   PURCHASE_EVENT_STATUS,
 } from "@/lib/hotmart/extract";
 import type { Offer } from "@/lib/types/offer";
@@ -109,6 +111,12 @@ async function handlePurchaseEvent(
   const { value: grossValue, currency } = extractPurchaseValue(data);
   const payment = extractPayment(data);
   const now = new Date().toISOString();
+  // Datas reais da compra (não a hora em que o webhook foi processado) —
+  // sem isso, um reenvio da Hotmart (reprocessamento manual, ou uma
+  // entrega atrasada) grava a venda como se tivesse acontecido agora,
+  // igual ao bug já corrigido no backfill retroativo (ver extractOrderDate).
+  const orderDate = extractOrderDate(data);
+  const approvedDate = extractApprovedDate(data);
   const product = data.product as Json | undefined;
 
   const saleRow: Record<string, unknown> = {
@@ -139,7 +147,11 @@ async function handlePurchaseEvent(
     raw_payload: data,
   };
 
-  if (status === "approved") saleRow.approved_at = now;
+  // created_at só é setado explicitamente na primeira gravação dessa
+  // transação — um upsert de atualização de status (ex. aprovado →
+  // reembolsado) não deve mexer em quando a compra foi de fato iniciada.
+  if (!existingSale && orderDate) saleRow.created_at = orderDate;
+  if (status === "approved") saleRow.approved_at = approvedDate ?? now;
   if (status === "refunded" || status === "chargeback") saleRow.refunded_at = now;
 
   await supabase.from("sales").upsert(saleRow, { onConflict: "hotmart_transaction_id" });
@@ -147,7 +159,16 @@ async function handlePurchaseEvent(
   if (status === "approved" && !wasApproved) {
     after(async () => {
       const eventId = `hotmart-${transactionId}`;
-      const eventTime = Math.floor(Date.now() / 1000);
+      // Usa a data real de aprovação (não o momento do processamento) —
+      // importante quando este webhook é um reenvio/reprocessamento da
+      // Hotmart de uma venda que já aconteceu há horas: sem isso, a Meta
+      // recebe o Purchase como se a conversão fosse agora, distorcendo a
+      // atribuição por horário/dia. A CAPI aceita event_time de até 7 dias
+      // atrás; se vier mais antigo que isso (payload sem approved_date
+      // utilizável), cai no comportamento anterior (agora).
+      const eventTime = approvedDate
+        ? Math.floor(new Date(approvedDate).getTime() / 1000)
+        : Math.floor(Date.now() / 1000);
 
       const [metaResult, ga4Result] = await Promise.all([
         sendMetaEvent({
