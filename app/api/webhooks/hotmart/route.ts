@@ -25,6 +25,16 @@ export const runtime = "nodejs";
 type Json = Record<string, unknown>;
 type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 
+// Some só o suficiente pra comparar duas strings sem nunca expor o valor
+// completo em log algum — tamanho + começo/fim ajudam a apontar
+// exatamente o tipo de divergência (token totalmente diferente vs. só
+// truncado/com um caractere a mais) sem virar um vazamento de segredo.
+function tokenFingerprint(value: string | null | undefined): string {
+  if (!value) return "vazio";
+  if (value.length <= 8) return `len=${value.length}`;
+  return `len=${value.length} começa="${value.slice(0, 4)}" termina="${value.slice(-4)}"`;
+}
+
 async function logWebhook(
   supabase: SupabaseAdmin | null,
   payload: unknown,
@@ -220,7 +230,12 @@ export async function POST(request: Request) {
   // essa comparação falhar de um jeito invisível, sem nenhuma pista de
   // que os valores "parecem" iguais.
   if (expectedToken && receivedToken !== expectedToken) {
-    await logWebhook(supabase, payload, "invalid_hottok");
+    await logWebhook(
+      supabase,
+      payload,
+      "invalid_hottok",
+      `recebido: ${tokenFingerprint(receivedToken)} | esperado (HOTMART_HOTTOK): ${tokenFingerprint(expectedToken)}`,
+    );
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
