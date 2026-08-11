@@ -35,6 +35,17 @@ function tokenFingerprint(value: string | null | undefined): string {
   return `len=${value.length} começa="${value.slice(0, 4)}" termina="${value.slice(-4)}"`;
 }
 
+// O header exato que a Hotmart usa pro hottok não é 100% garantido entre
+// versões da API (v1/v2) — procura qualquer header cujo nome contenha
+// "hottok" em vez de exigir o nome exato "hottok", e nunca loga o valor
+// de nenhum outro header, só os nomes (não são segredo).
+function findHottokHeader(request: Request): string | null {
+  for (const [key, value] of request.headers.entries()) {
+    if (key.toLowerCase().includes("hottok")) return value;
+  }
+  return null;
+}
+
 async function logWebhook(
   supabase: SupabaseAdmin | null,
   payload: unknown,
@@ -222,7 +233,7 @@ export async function POST(request: Request) {
   }
 
   const payload = parsed.data;
-  const receivedToken = (request.headers.get("hottok") || payload.hottok || "").trim();
+  const receivedToken = (findHottokHeader(request) || payload.hottok || "").trim();
   const expectedToken = process.env.HOTMART_HOTTOK?.trim();
 
   // .trim() nos dois lados — um espaço em branco colado sem querer no
@@ -230,11 +241,12 @@ export async function POST(request: Request) {
   // essa comparação falhar de um jeito invisível, sem nenhuma pista de
   // que os valores "parecem" iguais.
   if (expectedToken && receivedToken !== expectedToken) {
+    const headerNames = Array.from(request.headers.keys()).join(", ");
     await logWebhook(
       supabase,
       payload,
       "invalid_hottok",
-      `recebido: ${tokenFingerprint(receivedToken)} | esperado (HOTMART_HOTTOK): ${tokenFingerprint(expectedToken)}`,
+      `recebido: ${tokenFingerprint(receivedToken)} | esperado (HOTMART_HOTTOK): ${tokenFingerprint(expectedToken)} | headers: ${headerNames}`,
     );
     return NextResponse.json({ ok: false }, { status: 401 });
   }
