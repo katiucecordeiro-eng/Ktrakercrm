@@ -45,6 +45,7 @@ type SaleAttributionRow = {
 
 type Acc = {
   name: string;
+  offerId: string;
   spend: number;
   revenue: number;
   salesCount: number;
@@ -57,8 +58,8 @@ type CampaignAcc = Acc & {
   adsets: Map<string, Acc & { name: string; ads: Map<string, Acc> }>;
 };
 
-function emptyAcc(name: string): Acc {
-  return { name, spend: 0, revenue: 0, salesCount: 0, clicks: 0, impressions: 0, reach: 0 };
+function emptyAcc(name: string, offerId: string): Acc {
+  return { name, offerId, spend: 0, revenue: 0, salesCount: 0, clicks: 0, impressions: 0, reach: 0 };
 }
 
 function toAdRow(id: string, acc: Acc): CampaignAdRow {
@@ -173,7 +174,10 @@ export async function getCampaignsFullTable(
     realCampaigns.set(campaignKey, { campaignName: row.campaign_name });
 
     if (!campaigns.has(campaignKey)) {
-      campaigns.set(campaignKey, { ...emptyAcc(row.campaign_name || row.campaign_id), adsets: new Map() });
+      campaigns.set(campaignKey, {
+        ...emptyAcc(row.campaign_name || row.campaign_id, row.offer_id),
+        adsets: new Map(),
+      });
     }
     const campaign = campaigns.get(campaignKey)!;
     campaign.spend += Number(row.spend);
@@ -184,7 +188,10 @@ export async function getCampaignsFullTable(
 
     const adsetId = row.adset_id || "sem-conjunto";
     if (!campaign.adsets.has(adsetId)) {
-      campaign.adsets.set(adsetId, { ...emptyAcc(row.adset_name || adsetId), ads: new Map() });
+      campaign.adsets.set(adsetId, {
+        ...emptyAcc(row.adset_name || adsetId, row.offer_id),
+        ads: new Map(),
+      });
     }
     const adset = campaign.adsets.get(adsetId)!;
     adset.spend += Number(row.spend);
@@ -195,7 +202,7 @@ export async function getCampaignsFullTable(
 
     const adId = row.ad_id || "sem-anuncio";
     if (!adset.ads.has(adId)) {
-      adset.ads.set(adId, emptyAcc(row.ad_name || adId));
+      adset.ads.set(adId, emptyAcc(row.ad_name || adId, row.offer_id));
     }
     const ad = adset.ads.get(adId)!;
     ad.spend += Number(row.spend);
@@ -263,6 +270,9 @@ export async function getCampaignsFullTable(
     rows.push({
       id: "sem-atribuicao",
       name: "Sem atribuição de campanha",
+      // Pode abranger vendas de mais de uma oferta em "todas as ofertas" —
+      // sem um offerId único, não é gerenciável (sem ações de pausar/orçamento).
+      offerId: "",
       spend: 0,
       revenue: unattributedRevenue,
       salesCount: unattributedCount,

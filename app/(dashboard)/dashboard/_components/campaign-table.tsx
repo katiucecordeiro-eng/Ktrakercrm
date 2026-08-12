@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -70,12 +70,17 @@ export function CampaignTable({
   showStatus = false,
   onExportCsv,
   roasTarget = 2,
+  renderActions,
 }: {
   rows: CampaignRow[];
   currency: string;
   showStatus?: boolean;
   onExportCsv?: () => void;
   roasTarget?: number;
+  // Só passado pela aba Campanhas (não na Visão Geral) — mantém o
+  // gerenciamento de campanha fora deste componente compartilhado,
+  // seguindo o mesmo padrão de onExportCsv.
+  renderActions?: (row: CampaignAdRow, level: "campaign" | "adset" | "ad") => ReactNode;
 }) {
   const [expandedCampaigns, setExpandedCampaigns] = useState<Set<string>>(new Set());
   const [expandedAdsets, setExpandedAdsets] = useState<Set<string>>(new Set());
@@ -138,6 +143,7 @@ export function CampaignTable({
               <TableRow>
                 <TableHead>Campanha</TableHead>
                 {showStatus ? <TableHead>Status</TableHead> : null}
+                {renderActions ? <TableHead>Ações</TableHead> : null}
                 <TableHead>Gasto</TableHead>
                 <TableHead>Faturamento</TableHead>
                 <TableHead>Vendas</TableHead>
@@ -163,6 +169,7 @@ export function CampaignTable({
                     <TableRow key={campaign.id} className="bg-surface/40">
                       <TableCell className="italic text-muted-foreground">{campaign.name}</TableCell>
                       {showStatus ? <TableCell>—</TableCell> : null}
+                      {renderActions ? <TableCell>—</TableCell> : null}
                       <MetricsCells row={campaign} currency={currency} showMore={showMore} roasTarget={roasTarget} />
                     </TableRow>
                   );
@@ -183,6 +190,11 @@ export function CampaignTable({
                           <Badge variant={campaign.status === "ativo" ? "default" : "secondary"}>
                             {campaign.status === "ativo" ? "Ativa" : "Pausada"}
                           </Badge>
+                        </TableCell>
+                      ) : null}
+                      {renderActions ? (
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {renderActions(campaign, "campaign")}
                         </TableCell>
                       ) : null}
                       <MetricsCells row={campaign} currency={currency} showMore={showMore} roasTarget={roasTarget} />
@@ -206,6 +218,11 @@ export function CampaignTable({
                                 <span className="max-w-[240px] truncate">{adset.name}</span>
                               </TableCell>
                               {showStatus ? <TableCell /> : null}
+                              {renderActions ? (
+                                <TableCell onClick={(e) => e.stopPropagation()}>
+                                  {renderActions(adset, "adset")}
+                                </TableCell>
+                              ) : null}
                               <MetricsCells row={adset} currency={currency} showMore={showMore} roasTarget={roasTarget} />
                             </TableRow>
                             {adsetOpen &&
@@ -218,6 +235,7 @@ export function CampaignTable({
                                     <span className="max-w-[220px] truncate">{ad.name}</span>
                                   </TableCell>
                                   {showStatus ? <TableCell /> : null}
+                                  {renderActions ? <TableCell>{renderActions(ad, "ad")}</TableCell> : null}
                                   <MetricsCells row={ad} currency={currency} showMore={showMore} roasTarget={roasTarget} />
                                 </TableRow>
                               ))}

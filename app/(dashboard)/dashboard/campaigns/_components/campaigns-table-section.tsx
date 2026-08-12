@@ -3,10 +3,11 @@
 import { useEffect, useRef } from "react";
 
 import { CampaignTable } from "../../_components/campaign-table";
+import { CampaignActionsCell } from "./campaign-actions-cell";
 import { downloadCsv, rowsToCsv } from "@/lib/utils/csv";
 import { useToast } from "@/components/ui/toast";
 import { formatRoas } from "@/lib/format";
-import type { CampaignRow } from "@/lib/reports/types";
+import type { CampaignAdRow, CampaignRow } from "@/lib/reports/types";
 
 const CSV_HEADERS = [
   "Nível",
@@ -130,6 +131,15 @@ export function CampaignsTableSection({
       showStatus
       onExportCsv={handleExport}
       roasTarget={roasTarget}
+      renderActions={(row: CampaignAdRow, level) => (
+        <CampaignActionsCell
+          offerId={row.offerId}
+          level={level}
+          entityId={row.id}
+          entityName={row.name}
+          currency={currency}
+        />
+      )}
     />
   );
 }

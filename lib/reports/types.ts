@@ -53,6 +53,12 @@ export type TimeSeriesPoint = {
 export type CampaignAdRow = {
   id: string;
   name: string;
+  // Necessário pra saber de qual oferta (e portanto qual token da
+  // Marketing API) usar ao pausar/ativar ou editar orçamento direto pela
+  // tabela — em "todas as ofertas" cada linha pode pertencer a uma oferta
+  // diferente. Vazio na linha "sem atribuição" (spans possivelmente mais
+  // de uma oferta, não gerenciável).
+  offerId: string;
   spend: number;
   revenue: number;
   salesCount: number;

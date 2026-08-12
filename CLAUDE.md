@@ -868,6 +868,53 @@ Instagram) — a seção 3 funciona nos dois modos, igual ao resto do CRM.
   já que esconder um dado que já está calculado (barato de manter visível)
   seria regressão, não polish.
 
+### Gerenciamento de campanha direto pelo CRM (pós-lançamento)
+
+Pedido da usuária: pausar/ativar campanha, conjunto e anúncio, e editar
+orçamento diário, sem sair do KTracker — o token de Marketing API dela
+(System User) já tem escopo `ads_management`, suficiente pra escrever na
+conta, não só ler.
+
+- **`lib/meta/campaign-actions.ts`**: `setMetaEntityStatus` (campo
+  `status=ACTIVE|PAUSED`, mesmo campo pros 3 níveis de objeto da Marketing
+  API) e `setMetaDailyBudget` (`daily_budget`, na **menor unidade da
+  moeda** — reaproveita a mesma lista de moedas sem casas decimais de
+  `lib/meta/account-info.ts`). Erros vêm formatados por
+  `formatMetaApiError`, igual ao resto das integrações Meta.
+- **`app/(dashboard)/dashboard/campaigns/campaign-actions.ts`** (Server
+  Actions): resolve a oferta e descriptografa o token na hora de usar,
+  chama a Marketing API, e grava o resultado (sucesso ou erro) em
+  `campaign_action_logs` (migration `0015`) — auditoria de quem/quando/o
+  quê, já que a Marketing API não expõe histórico dessas mudanças. Pausar/
+  ativar é sempre um clique idempotente (`status` aceita o mesmo valor
+  repetido sem efeito colateral) em vez de precisar ler o status atual
+  antes — evita uma chamada extra e uma condição de corrida.
+- **UI**: coluna "Ações" nova só na aba Campanhas (`renderActions` prop
+  opcional do `CampaignTable` compartilhado — Visão Geral não passa essa
+  prop, então continua sem os botões). Cada linha abre um `Dialog`
+  (`campaign-actions-cell.tsx`) com Ativar/Pausar + campo de orçamento
+  (campanha e conjunto only — anúncio não tem orçamento próprio na Meta).
+  Abrir o diálogo é inofensivo; só o clique explícito em
+  Ativar/Pausar/Salvar dentro dele dispara a chamada real — evita pausar
+  campanha sem querer com um clique na linha da tabela.
+- **Orçamento CBO vs. ABO não é detectado automaticamente**: o formulário
+  deixa a usuária escolher o nível (campanha ou conjunto) mandando editar;
+  se a conta usa orçamento no nível errado pra aquela campanha, a própria
+  Meta rejeita com uma mensagem explicando (repassada tal como veio, sem
+  tentar adivinhar automaticamente qual nível usar).
+- Linhas sem `campaign_id`/`adset_id`/`ad_id` reais (buckets internos
+  `sem-conjunto`/`sem-anuncio`, ou a linha "Sem atribuição de campanha")
+  não mostram o botão de ações — não há entidade real da Meta pra
+  gerenciar. `CampaignAdRow` ganhou um campo `offerId` (necessário porque
+  em "todas as ofertas" cada linha pode pertencer a uma oferta/conta de
+  anúncio diferente) — thread-through tanto em `lib/reports/campaigns.ts`
+  (aba Campanhas) quanto em `lib/reports/queries.ts#getCampaignTable`
+  (Visão Geral), via a coluna `offer_id` que as views/tabelas já expunham.
+- **Sem visualizador de log ainda**: `campaign_action_logs` é gravado a
+  cada ação mas não tem uma tela própria pra consultar — por enquanto só
+  via SQL direto no Supabase; candidato a UI futura se o volume de ações
+  justificar.
+
 ### Bugs encontrados no uso real (pós-Sprint F)
 
 - **"Vendas iniciadas" contando centenas a mais do que deveria**: causa

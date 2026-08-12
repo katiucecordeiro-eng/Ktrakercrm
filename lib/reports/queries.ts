@@ -317,6 +317,7 @@ export async function getTimeSeries(
 // ── Tabela de campanhas/conjuntos/anúncios ───────────────────────────
 
 type CampaignPerformanceRow = {
+  offer_id: string;
   campaign_id: string;
   campaign_name: string;
   adset_id: string;
@@ -370,6 +371,7 @@ export async function getCampaignTable(
 
   type Acc = {
     name: string;
+    offerId: string;
     spend: number;
     revenue: number;
     salesCount: number;
@@ -386,6 +388,7 @@ export async function getCampaignTable(
     if (!campaigns.has(row.campaign_id)) {
       campaigns.set(row.campaign_id, {
         name: row.campaign_name || row.campaign_id,
+        offerId: row.offer_id,
         spend: 0,
         revenue: 0,
         salesCount: 0,
@@ -408,6 +411,7 @@ export async function getCampaignTable(
     if (!campaign.adsets.has(adsetId)) {
       campaign.adsets.set(adsetId, {
         name: row.adset_name || adsetId,
+        offerId: row.offer_id,
         spend: 0,
         revenue: 0,
         salesCount: 0,
@@ -430,6 +434,7 @@ export async function getCampaignTable(
     if (!adset.ads.has(adId)) {
       adset.ads.set(adId, {
         name: row.ad_name || adId,
+        offerId: row.offer_id,
         spend: 0,
         revenue: 0,
         salesCount: 0,
