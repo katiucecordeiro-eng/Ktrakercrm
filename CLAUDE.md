@@ -902,12 +902,54 @@ Instagram) — a seção 3 funciona nos dois modos, igual ao resto do CRM.
   o melhor dia da semana pra vender/anunciar, não só o melhor mês. Semana/
   mês/dia da semana renderizam em barras (comparação lado a lado mais
   legível que linha contínua); dia/hora continuam em linha.
+- **Reenvio/reprocessamento de venda pela própria Hotmart gravava a data de
+  processamento, não a data real da compra**: mesma causa raiz do bug de
+  backfill acima, só que no webhook ao vivo
+  (`app/api/webhooks/hotmart/route.ts#handlePurchaseEvent`) — sem setar
+  `created_at`/`approved_at` a partir de `purchase.order_date`/
+  `approved_date` do payload, um reenvio (diferente do botão "Vendas
+  retroativas" daqui do sistema, que é seguro) fazia a venda aparecer como
+  se tivesse acontecido na hora do reprocessamento, e disparava o
+  `Purchase` pra Meta CAPI/GA4 com `event_time` de agora — distorcendo a
+  atribuição por horário/dia na conta de anúncios. Corrigido: usa
+  `extractOrderDate`/`extractApprovedDate` (mesmos extratores do backfill)
+  tanto pro `created_at`/`approved_at` quanto pro `event_time` enviado à
+  Meta. **Recomendação**: pra recuperar vendas antigas, preferir o botão
+  "Vendas retroativas" ao reenvio manual pela própria Hotmart — este
+  último deve ficar só pra casos pontuais recentes (poucos dias).
+- **"Hoje"/"Ontem" e qualquer hora exibida no painel estavam até 3h
+  adiantadas**: `lib/reports/filters.ts` calculava início/fim do dia com
+  `Date#setHours`, que usa o fuso do processo — em produção (Vercel) isso
+  é UTC, não `America/Sao_Paulo`. Mesma causa em vários `toLocaleString`
+  espalhados por Server Components (última atividade do visitante,
+  timeline, webhooks recentes) sem `timeZone` explícito. Corrigido com
+  `lib/utils/timezone.ts` (`startOfDayInTimezone`/`endOfDayInTimezone`/
+  `startOfMonthInTimezone`, sem lib externa) usado em `parseReportFilters`
+  com o fuso da oferta selecionada (`America/Sao_Paulo` por padrão em
+  "todas as ofertas") e `lib/format.ts#formatDateTime/formatDate/formatTime`
+  (mesmo default) reaproveitado nos Server Components que antes
+  duplicavam a formatação sem fuso.
+- **Cards de KPI vazando conteúdo no mobile**: `Card` (componente base)
+  não tinha `min-w-0` — um item de grid não encolhe abaixo da largura
+  intrínseca do conteúdo por padrão, então "R$ 0,00 ↓100.0%" vazava pra
+  fora da borda em vez de quebrar linha no grid de 2 colunas do celular.
+  Corrigido com `min-w-0` no `Card` + `flex-wrap` na linha valor/delta +
+  padding/fonte menores no mobile (`kpi-cards.tsx`).
 
 ## Identidade visual
 
-Tema dark forte: fundo `#0A0E14`, superfícies `#111722`, bordas `#1E2733`.
-Verde neon `#22FF88` (positivo/ROAS, com glow), âmbar `#FFB020` (alertas),
-vermelho `#FF4757` (reembolso/prejuízo). Fonte Inter (UI) + JetBrains Mono
-(todos os números/KPIs, via classe `.font-mono-nums`). Tokens de cor em
+Tema dark forte, paleta **vermelho/dourado/bordô** (pedido da usuária,
+alinhado à identidade do SEDA — trocou o tema azulado original de
+lançamento): fundo `#170B0D`, superfícies `#211113`, bordas `#3D2024`,
+todos com matiz quente de bordô quase-preto. Dourado `#E3B23C` é o
+accent (marca, ROAS, glow, badge de "positivo" — mesmo papel que o verde
+neon tinha antes), laranja `#FF9F3D` pros alertas, vermelho `#FF4757`
+pra reembolso/prejuízo. Fonte Inter (UI) + JetBrains Mono (todos os
+números/KPIs, via classe `.font-mono-nums`). Tokens de cor em
 `app/globals.css` (`@theme inline`), usados como `bg-background`,
-`text-accent`, `border-border` etc.
+`text-accent`, `border-border` etc. — a maioria dos gráficos (Recharts)
+referencia essas variáveis diretamente (`fill="var(--accent)"`), então um
+ajuste de paleta futuro é, na prática, só mexer nos valores de `:root`;
+os poucos componentes com cores de categoria hardcoded (`payment-donut.tsx`,
+`product-sales-chart.tsx`, `lead-maturity-section.tsx`) foram atualizados
+junto pra não destoar.
