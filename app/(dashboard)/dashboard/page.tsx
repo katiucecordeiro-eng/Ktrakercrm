@@ -21,6 +21,7 @@ import {
 import type { Offer } from "@/lib/types/offer";
 import type { Granularity } from "@/lib/reports/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDate } from "@/lib/format";
 
 import { PeriodSwitcher } from "./_components/period-switcher";
 import { RefreshButton } from "./_components/refresh-button";
@@ -105,7 +106,7 @@ export default async function DashboardOverviewPage({
             {selectedOffer ? selectedOffer.name : "Todas as ofertas"}
           </p>
           <p className="hidden text-xs text-muted-foreground print:block">
-            Período: {filters.since.toLocaleDateString("pt-BR")} – {filters.until.toLocaleDateString("pt-BR")}
+            Período: {formatDate(filters.since.toISOString(), timezone)} – {formatDate(filters.until.toISOString(), timezone)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 print:hidden">

@@ -1,3 +1,23 @@
+import { DEFAULT_TIMEZONE } from "@/lib/utils/timezone";
+
+// Sem `timeZone` explícito, `toLocaleString` usa o fuso do processo — em
+// produção (Vercel) isso é UTC, então qualquer data formatada em um
+// Server Component aparecia até 3h à frente da hora real de Brasília.
+export function formatDateTime(value: string | null | undefined, timeZone: string = DEFAULT_TIMEZONE) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone });
+}
+
+export function formatDate(value: string | null | undefined, timeZone: string = DEFAULT_TIMEZONE) {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("pt-BR", { dateStyle: "short", timeZone });
+}
+
+export function formatTime(value: string | null | undefined, timeZone: string = DEFAULT_TIMEZONE) {
+  if (!value) return "—";
+  return new Date(value).toLocaleTimeString("pt-BR", { timeStyle: "short", timeZone });
+}
+
 export function formatCurrency(value: number, currency = "BRL") {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(value || 0);
 }

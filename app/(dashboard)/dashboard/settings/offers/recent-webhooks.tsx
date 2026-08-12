@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { formatDateTime } from "@/lib/format";
 import { WebhookUrlCopy } from "./webhook-url-copy";
 
 type WebhookLog = {
@@ -66,7 +67,7 @@ export async function RecentWebhooks() {
               <Badge variant={statusVariant(log.status)}>{log.status ?? "—"}</Badge>
               <span className="truncate px-2 text-xs text-muted-foreground">{log.error ?? ""}</span>
               <span className="shrink-0 font-mono-nums text-xs text-muted-foreground">
-                {new Date(log.created_at).toLocaleString("pt-BR")}
+                {formatDateTime(log.created_at)}
               </span>
             </div>
           ))

@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { MousePointerClick, Eye, FileText, CreditCard, ShoppingBag, CheckCircle2, RotateCcw } from "lucide-react";
 
+import { formatDateTime } from "@/lib/format";
 import type { VisitorEventRow, VisitorSaleRow } from "@/lib/crm/types";
 
 type Milestone = {
@@ -22,7 +23,7 @@ function formatGap(ms: number): string {
 }
 
 function formatMoment(value: string) {
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return formatDateTime(value);
 }
 
 function firstEventAt(events: VisitorEventRow[], name: string): string | null {

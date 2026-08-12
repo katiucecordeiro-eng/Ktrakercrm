@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { searchVisitors } from "@/lib/crm/queries";
-import { formatCurrency, formatNumber } from "@/lib/format";
+import { formatCurrency, formatDateTime, formatNumber } from "@/lib/format";
 import type { Offer } from "@/lib/types/offer";
 import type { VisitorStatus } from "@/lib/crm/types";
 import type { RawSearchParams } from "@/lib/reports/filters";
@@ -36,11 +36,6 @@ async function getOffers(): Promise<Offer[]> {
   } catch {
     return [];
   }
-}
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—";
-  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
 export default async function VisitorsPage({

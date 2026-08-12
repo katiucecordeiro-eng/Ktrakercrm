@@ -1,17 +1,6 @@
 import type { Offer } from "@/lib/types/offer";
 import type { Granularity, PeriodPreset, ReportFilters } from "./types";
-
-function startOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function endOfDay(d: Date) {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
-}
+import { DEFAULT_TIMEZONE, endOfDayInTimezone, startOfDayInTimezone, startOfMonthInTimezone } from "@/lib/utils/timezone";
 
 function pickGranularity(since: Date, until: Date): Granularity {
   const days = (until.getTime() - since.getTime()) / 86_400_000;
@@ -31,6 +20,10 @@ function param(searchParams: RawSearchParams, key: string): string | null {
 export function parseReportFilters(searchParams: RawSearchParams, offers: Offer[]): ReportFilters {
   const offerSlugParam = param(searchParams, "offer");
   const offer = offerSlugParam ? (offers.find((o) => o.slug === offerSlugParam) ?? null) : null;
+  // Fuso da oferta selecionada; em "todas as ofertas" cai pro fuso padrão
+  // do projeto (Brasil) — sem isso, "Hoje"/"Ontem" viravam os limites do
+  // dia em UTC (fuso do servidor na Vercel), até 3h defasados da hora real.
+  const timezone = offer?.timezone ?? DEFAULT_TIMEZONE;
 
   const periodParam = (param(searchParams, "period") ?? "today") as PeriodPreset;
   const now = new Date();
@@ -41,27 +34,27 @@ export function parseReportFilters(searchParams: RawSearchParams, offers: Offer[
 
   switch (periodParam) {
     case "today":
-      since = startOfDay(now);
+      since = startOfDayInTimezone(now, timezone);
       until = now;
       break;
     case "yesterday": {
-      const y = new Date(now);
-      y.setDate(y.getDate() - 1);
-      since = startOfDay(y);
-      until = endOfDay(y);
+      const y = new Date(now.getTime() - 86_400_000);
+      since = startOfDayInTimezone(y, timezone);
+      until = endOfDayInTimezone(y, timezone);
       break;
     }
     case "7d":
-      since = startOfDay(new Date(now.getTime() - 6 * 86_400_000));
+      since = startOfDayInTimezone(new Date(now.getTime() - 6 * 86_400_000), timezone);
       until = now;
       break;
     case "this_month":
-      since = new Date(now.getFullYear(), now.getMonth(), 1);
+      since = startOfMonthInTimezone(now, timezone);
       until = now;
       break;
     case "last_month": {
-      const firstOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      since = new Date(firstOfThisMonth.getFullYear(), firstOfThisMonth.getMonth() - 1, 1);
+      const firstOfThisMonth = startOfMonthInTimezone(now, timezone);
+      const lastMonthRef = new Date(firstOfThisMonth.getTime() - 86_400_000);
+      since = startOfMonthInTimezone(lastMonthRef, timezone);
       until = new Date(firstOfThisMonth.getTime() - 1);
       break;
     }
@@ -69,15 +62,15 @@ export function parseReportFilters(searchParams: RawSearchParams, offers: Offer[
       const sinceParam = param(searchParams, "since");
       const untilParam = param(searchParams, "until");
       since = sinceParam
-        ? startOfDay(new Date(sinceParam))
-        : startOfDay(new Date(now.getTime() - 29 * 86_400_000));
-      until = untilParam ? endOfDay(new Date(untilParam)) : now;
+        ? startOfDayInTimezone(new Date(`${sinceParam}T12:00:00Z`), timezone)
+        : startOfDayInTimezone(new Date(now.getTime() - 29 * 86_400_000), timezone);
+      until = untilParam ? endOfDayInTimezone(new Date(`${untilParam}T12:00:00Z`), timezone) : now;
       break;
     }
     case "30d":
     default:
       period = "30d";
-      since = startOfDay(new Date(now.getTime() - 29 * 86_400_000));
+      since = startOfDayInTimezone(new Date(now.getTime() - 29 * 86_400_000), timezone);
       until = now;
       break;
   }
