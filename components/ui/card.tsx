@@ -7,7 +7,11 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "rounded-lg border border-border bg-card text-card-foreground shadow-sm",
+        // min-w-0: sem isso, um card dentro de um grid não encolhe abaixo
+        // da largura intrínseca do conteúdo (número grande + badge de
+        // delta) — o texto vazava pra fora da borda em vez de quebrar
+        // linha, sobretudo no grid de 2 colunas dos KPIs no mobile.
+        "min-w-0 rounded-lg border border-border bg-card text-card-foreground shadow-sm",
         className,
       )}
       {...props}

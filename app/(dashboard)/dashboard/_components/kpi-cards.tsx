@@ -97,19 +97,19 @@ function Kpi({
         className,
       )}
     >
-      <CardHeader className="gap-1.5">
-        <CardTitle className="flex items-center gap-1">
+      <CardHeader className="gap-1.5 p-4 sm:p-6">
+        <CardTitle className="flex items-center gap-1 break-words">
           {label}
           {description ? (
             <Tooltip content={description}>
-              <Info className="size-3 cursor-help text-muted-foreground/60" />
+              <Info className="size-3 shrink-0 cursor-help text-muted-foreground/60" />
             </Tooltip>
           ) : null}
         </CardTitle>
-        <div className="flex items-baseline gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span
             className={cn(
-              "font-mono-nums text-2xl font-semibold",
+              "font-mono-nums text-xl font-semibold sm:text-2xl",
               tone === "accent" && "text-accent",
               tone === "warning" && "text-warning",
               tone === "danger" && "text-danger",
