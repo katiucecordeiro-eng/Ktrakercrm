@@ -3,27 +3,33 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Paleta vermelho/dourado/bordô, alinhada à identidade visual do SEDA
+   (pedido da usuária) — substitui o tema dark azulado original. Fundo e
+   superfícies ganharam um matiz quente de bordô quase-preto; dourado
+   virou o accent (marca, ROAS, glow, indicador de "positivo" — mesmo
+   papel que o verde neon tinha antes); alerta/perigo mantidos
+   perceptíveis contra o novo fundo mais quente. */
 :root {
-  --background: #0a0e14;
-  --surface: #111722;
-  --surface-hover: #161d29;
-  --border-subtle: #1e2733;
-  --foreground: #e6ebf2;
-  --muted-foreground: #8b98a9;
-  --accent: #22ff88;
-  --accent-foreground: #04140b;
-  --warning: #ffb020;
+  --background: #170b0d;
+  --surface: #211113;
+  --surface-hover: #2b171a;
+  --border-subtle: #3d2024;
+  --foreground: #f5eae4;
+  --muted-foreground: #b2938f;
+  --accent: #e3b23c;
+  --accent-foreground: #241203;
+  --warning: #ff9f3d;
   --danger: #ff4757;
-  --primary: #22ff88;
-  --primary-foreground: #04140b;
-  --secondary: #161d29;
-  --secondary-foreground: #e6ebf2;
-  --card: #111722;
-  --card-foreground: #e6ebf2;
-  --popover: #111722;
-  --popover-foreground: #e6ebf2;
-  --input: #1e2733;
-  --ring: #22ff88;
+  --primary: #e3b23c;
+  --primary-foreground: #241203;
+  --secondary: #2b171a;
+  --secondary-foreground: #f5eae4;
+  --card: #211113;
+  --card-foreground: #f5eae4;
+  --popover: #211113;
+  --popover-foreground: #f5eae4;
+  --input: #3d2024;
+  --ring: #e3b23c;
   --radius: 0.625rem;
 }
 
@@ -67,7 +73,7 @@ body {
 }
 
 .glow-accent {
-  box-shadow: 0 0 0 1px rgba(34, 255, 136, 0.25), 0 0 24px -6px rgba(34, 255, 136, 0.45);
+  box-shadow: 0 0 0 1px rgba(227, 178, 60, 0.3), 0 0 24px -6px rgba(227, 178, 60, 0.5);
 }
 
 @keyframes pulse-live {
@@ -89,10 +95,10 @@ body {
 @keyframes pulse-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 1px rgba(34, 255, 136, 0.25), 0 0 24px -6px rgba(34, 255, 136, 0.45);
+    box-shadow: 0 0 0 1px rgba(227, 178, 60, 0.3), 0 0 24px -6px rgba(227, 178, 60, 0.5);
   }
   50% {
-    box-shadow: 0 0 0 1px rgba(34, 255, 136, 0.45), 0 0 32px -4px rgba(34, 255, 136, 0.7);
+    box-shadow: 0 0 0 1px rgba(227, 178, 60, 0.5), 0 0 32px -4px rgba(227, 178, 60, 0.75);
   }
 }
 
@@ -104,12 +110,12 @@ body {
    bespoke (fora de escopo sem assets de design) por uma textura sutil de
    grade de pontos, em CSS puro. */
 .dot-grid {
-  background-image: radial-gradient(rgba(230, 235, 242, 0.14) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(245, 234, 228, 0.12) 1px, transparent 1px);
   background-size: 16px 16px;
 }
 
 ::selection {
-  background: rgba(34, 255, 136, 0.25);
+  background: rgba(227, 178, 60, 0.3);
 }
 
 /* Exportar PDF (Sprint F) usa a impressão nativa do navegador em vez de

@@ -14,13 +14,13 @@ const METHOD_LABELS: Record<string, string> = {
 };
 
 const METHOD_COLORS: Record<string, string> = {
-  pix: "#22ff88",
-  credit_card: "#5b8def",
-  billet: "#ffb020",
-  boleto: "#ffb020",
+  pix: "var(--accent)",
+  credit_card: "#6f8fc4",
+  billet: "var(--warning)",
+  boleto: "var(--warning)",
 };
 
-const FALLBACK_COLOR = "#8b98a9";
+const FALLBACK_COLOR = "var(--muted-foreground)";
 
 export function PaymentDonut({
   rows,

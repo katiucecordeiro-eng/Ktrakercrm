@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
 import type { ProductSalesRow } from "@/lib/reports/types";
 
-const BAR_COLORS = ["#22ff88", "#5b8def", "#ffb020", "#ff4757", "#8b98a9", "#a78bfa"];
+const BAR_COLORS = ["var(--accent)", "#6f8fc4", "var(--warning)", "var(--danger)", "#b2938f", "#c2799a"];
 
 export function ProductSalesChart({
   rows,

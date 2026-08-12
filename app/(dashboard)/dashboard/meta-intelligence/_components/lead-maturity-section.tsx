@@ -16,11 +16,11 @@ import { formatNumber } from "@/lib/format";
 import { LEAD_MATURITY_LABELS, type LeadMaturityResult, type LeadMaturityStage } from "@/lib/reports/lead-maturity";
 
 const STAGE_COLORS: Record<LeadMaturityStage, string> = {
-  frio: "#5b8def",
-  morno: "#ffb020",
-  quente: "#ff4757",
-  comprador: "#22ff88",
-  embaixador: "#a78bfa",
+  frio: "#6f8fc4",
+  morno: "var(--warning)",
+  quente: "var(--danger)",
+  comprador: "var(--accent)",
+  embaixador: "#c2799a",
 };
 
 function formatDateTime(value: string) {
