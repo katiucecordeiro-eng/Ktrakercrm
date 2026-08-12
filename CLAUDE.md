@@ -915,6 +915,49 @@ conta, não só ler.
   via SQL direto no Supabase; candidato a UI futura se o volume de ações
   justificar.
 
+### Order bump & upsell (pós-lançamento)
+
+Pedido da usuária: taxa de order bump/upsell igual a uma visão que ela viu
+em outro painel, pro funil dela — SEDA (principal) + 3 order bumps (A ARTE
+DO TEXTO QUENTE, PROTOCOLO ANTI-GHOSTING SÁFICO, O CÓDIGO DA PRIMEIRA
+MENSAGEM) + 2 upsells (Efeito Eclipse via funil de e-mail, PACK DE
+MAGNETISMO & TENSÃO pós-compra).
+
+- **`offer_product_roles`** (migration `0016`): tabela separada de
+  `offers.hotmart_product_ids` (que continua sendo a fonte usada pelo
+  webhook pra resolver a oferta — não mexida, pra não arriscar quebrar
+  algo em produção) — só guarda o papel (`principal`/`order_bump`/
+  `upsell`/`downsell`) de cada product_id já cadastrado na oferta.
+  Botão **"Papéis dos produtos"** em Configurações → Ofertas
+  (`product-roles-dialog.tsx`) lista os IDs da oferta com o nome
+  conhecido (visto em pelo menos uma venda) ou só o ID cru quando o
+  produto nunca vendeu ainda.
+- **Já pré-cadastrado direto no banco** pra 5 dos 6 produtos que a
+  usuária descreveu, casando pelo `product_name` visto em vendas reais:
+  SEDA (`5429078`, principal), A ARTE DO TEXTO QUENTE (`5546174`),
+  PROTOCOLO ANTI-GHOSTING SÁFICO (`6781914`) e O CÓDIGO DA PRIMEIRA
+  MENSAGEM (`6454758`) como order bump, PACK DE MAGNETISMO & TENSÃO
+  (`6422982`) como upsell. **Efeito Eclipse não pôde ser identificado**
+  — a oferta tem mais 3 `hotmart_product_ids` sem nenhuma venda ainda
+  (`6423611`, `6454460`, `5564604`), então não dá pra saber qual dos 3 é
+  o Eclipse só pelos dados; a usuária marca pelo diálogo assim que
+  souber/vender.
+- **`lib/reports/product-roles.ts#getOrderBumpUpsellMetrics`**: taxa de
+  anexo = contagem de vendas do produto ÷ contagem de vendas do produto
+  principal no período — **aproximação por contagem, não um link de
+  transação a transação** (a Hotmart manda `order_bump.parent_purchase_transaction`
+  ligando o order bump à compra principal, mas esse campo não é
+  capturado no schema atual; implementar isso é candidato a um ajuste
+  fino futuro pra uma taxa mais precisa). Só calculado com uma oferta
+  específica selecionada (preço/produtos não fazem sentido combinados
+  entre ofertas diferentes).
+- **`order-bump-upsell-section.tsx`**: nova seção na Visão Geral, logo
+  abaixo de "Vendas por produto" — só aparece quando a oferta selecionada
+  tem pelo menos um produto com papel diferente de "principal" cadastrado
+  (`getOrderBumpUpsellMetrics` devolve `null` sem oferta selecionada ou
+  sem nenhum papel configurado, escondendo a seção em vez de mostrar um
+  card vazio).
+
 ### Bugs encontrados no uso real (pós-Sprint F)
 
 - **"Vendas iniciadas" contando centenas a mais do que deveria**: causa

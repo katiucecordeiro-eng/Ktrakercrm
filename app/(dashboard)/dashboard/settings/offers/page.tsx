@@ -30,6 +30,7 @@ import { HotmartSyncDialog } from "./hotmart-sync-dialog";
 import { ConnectionTestDialog } from "./connection-test-dialog";
 import { RecentWebhooks } from "./recent-webhooks";
 import { CampaignMappingDialog, type CampaignOption, type CampaignMappingRow } from "./campaign-mapping-dialog";
+import { ProductRolesDialog, type ProductRoleOption } from "./product-roles-dialog";
 import { SystemStatusCard } from "./system-status-card";
 
 async function getOffers(): Promise<Offer[]> {
@@ -105,10 +106,52 @@ async function getMappingsByOffer(
   }
 }
 
+// Nome conhecido de cada product_id (visto em pelo menos uma venda), por
+// oferta — produtos cadastrados mas nunca vendidos aparecem só pelo ID no
+// diálogo de papéis.
+async function getKnownProductNames(): Promise<Map<string, string>> {
+  const byProductId = new Map<string, string>();
+  if (!isSupabaseConfigured()) return byProductId;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("sales")
+      .select("product_id, product_name")
+      .not("product_name", "is", null);
+    for (const row of (data as { product_id: string; product_name: string | null }[] | null) ?? []) {
+      if (row.product_name && !byProductId.has(row.product_id)) {
+        byProductId.set(row.product_id, row.product_name);
+      }
+    }
+    return byProductId;
+  } catch {
+    return byProductId;
+  }
+}
+
+async function getProductRolesByOffer(): Promise<Map<string, Map<string, string>>> {
+  const byOffer = new Map<string, Map<string, string>>();
+  if (!isSupabaseConfigured()) return byOffer;
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.from("offer_product_roles").select("offer_id, hotmart_product_id, role");
+    for (const row of (data as { offer_id: string; hotmart_product_id: string; role: string }[] | null) ?? []) {
+      const map = byOffer.get(row.offer_id) ?? new Map<string, string>();
+      map.set(row.hotmart_product_id, row.role);
+      byOffer.set(row.offer_id, map);
+    }
+    return byOffer;
+  } catch {
+    return byOffer;
+  }
+}
+
 export default async function OffersPage() {
   const offers = await getOffers();
   const campaignOptionsByOffer = await getCampaignOptionsByOffer();
   const mappingsByOffer = await getMappingsByOffer(campaignOptionsByOffer);
+  const knownProductNames = await getKnownProductNames();
+  const productRolesByOffer = await getProductRolesByOffer();
 
   return (
     <div className="flex flex-col gap-6">
@@ -190,6 +233,16 @@ export default async function OffersPage() {
                           offerId={offer.id}
                           campaignOptions={campaignOptionsByOffer.get(offer.id) ?? []}
                           mappings={mappingsByOffer.get(offer.id) ?? []}
+                        />
+                        <ProductRolesDialog
+                          offerId={offer.id}
+                          products={offer.hotmart_product_ids.map(
+                            (productId): ProductRoleOption => ({
+                              productId,
+                              productName: knownProductNames.get(productId) ?? null,
+                              role: (productRolesByOffer.get(offer.id)?.get(productId) as ProductRoleOption["role"]) ?? "",
+                            }),
+                          )}
                         />
                         <OfferFormDialog
                           offer={safeOffer}

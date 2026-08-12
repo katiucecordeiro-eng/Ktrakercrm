@@ -18,6 +18,7 @@ import {
   getSalesByProduct,
   getTimeSeries,
 } from "@/lib/reports/queries";
+import { getOrderBumpUpsellMetrics } from "@/lib/reports/product-roles";
 import type { Offer } from "@/lib/types/offer";
 import type { Granularity } from "@/lib/reports/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +32,7 @@ import { RevenueChart } from "./_components/revenue-chart";
 import { CampaignTable } from "./_components/campaign-table";
 import { PaymentDonut } from "./_components/payment-donut";
 import { ProductSalesChart } from "./_components/product-sales-chart";
+import { OrderBumpUpsellSection } from "./_components/order-bump-upsell-section";
 import { HourlyChart } from "./_components/hourly-chart";
 import { RegionRanking } from "./_components/region-ranking";
 import { LiveEventLog } from "./_components/live-event-log";
@@ -84,7 +86,7 @@ export default async function DashboardOverviewPage({
   const supabase = await createClient();
   const previousFilters = getPreviousPeriodFilters(filters);
   const timezone = selectedOffer?.timezone ?? "UTC";
-  const [kpis, previousKpis, funnel, timeSeries, campaigns, payments, hourly, regions, products] =
+  const [kpis, previousKpis, funnel, timeSeries, campaigns, payments, hourly, regions, products, orderBumpUpsell] =
     await Promise.all([
       getKpis(supabase, filters, offers),
       getKpis(supabase, previousFilters, offers),
@@ -95,6 +97,7 @@ export default async function DashboardOverviewPage({
       getHourlyBreakdown(supabase, filters, timezone),
       getRegionRanking(supabase, filters),
       getSalesByProduct(supabase, filters),
+      getOrderBumpUpsellMetrics(supabase, filters),
     ]);
 
   return (
@@ -139,6 +142,12 @@ export default async function DashboardOverviewPage({
         <ProductSalesChart rows={products} currency={currency} />
         <PaymentDonut rows={payments} currency={currency} />
       </div>
+
+      {orderBumpUpsell ? (
+        <div className="border-t border-border pt-6">
+          <OrderBumpUpsellSection metrics={orderBumpUpsell} currency={currency} />
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 border-t border-border pt-6 lg:grid-cols-2">
         <HourlyChart rows={hourly} />
