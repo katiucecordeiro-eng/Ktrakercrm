@@ -185,6 +185,12 @@ async function handlePurchaseEvent(
           externalId: visitor?.id ?? transactionId,
           email: buyer.email,
           phone: buyer.phone,
+          firstName: buyer.firstName,
+          lastName: buyer.lastName,
+          city: buyer.city,
+          state: buyer.state,
+          zipCode: buyer.zipCode,
+          countryCode: buyer.countryCode,
           customData: { value: grossValue, currency },
         }),
         sendGa4Event({

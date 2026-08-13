@@ -989,6 +989,63 @@ o GTM/Stape antigo rodando em paralelo pra comparar.
   eliminar 100% qualquer efeito do script na página, é preciso remover o
   snippet do WordPress também.
 
+### Qualidade do sinal pra Meta CAPI (pós-lançamento)
+
+Investigação pedida pela usuária depois de desativar UTMify/Stape pra
+tentar isolar uma queda de vendas: inspecionei o código-fonte real da
+página (`seda-landing`) e cruzei achados com o banco.
+
+- **Achados no HTML da página (não no código deste repo)**: o loader do
+  GTM via Stape (`stape.metodoseda.com/....js`, container
+  `GTM-T7QLMZSQ`) e um script solto de UTMify (captura `utm_*`/`fbclid`
+  no load e concatena `?sck=...&xcod=...` nos links de checkout Hotmart,
+  formato `utm_source|utm_medium|utm_campaign|utm_term|utm_content` —
+  bem diferente da convenção `sck = visitor_id` deste projeto) **ainda
+  estavam presentes e ativos** no HTML, apesar de a usuária achar que
+  tinha desativado os dois — o que ela desligou deve ter sido algo dentro
+  do painel da Stape/UTMify (ex. uma tag pausada), não a remoção do
+  script da página em si (WordPress/Elementor, widget HTML).
+- **Checado contra o banco: essa concatenação dupla de `?sck=` não está
+  corrompendo a atribuição própria** — as vendas dos últimos 30 dias com
+  `visitor_id` preenchido mostram um `sck` no formato UUID (o nosso), e
+  as sem `visitor_id` também não têm nenhuma UTM registrada (são tráfego
+  direto/orgânico, não vítimas de um `sck` sobrescrito). Ou seja, esse
+  script antigo é redundante e devia ser removido da página, mas não
+  parece ser a causa de vendas sem atribuição.
+- **Duplicidade real e confirmada, sem relação com Stape/UTMify**: o
+  plugin **PixelYourSite** (WordPress) dispara seu próprio `PageView`
+  direto do navegador pro **mesmo Pixel ID** (`1069574458460596`)
+  cadastrado em `offers.meta_pixel_id` — com `event_id` próprio, sem
+  nenhuma coordenação com o `track.js`/CAPI deste projeto (que não chama
+  `fbq()`, só lê/gera `_fbp`/`_fbc` via cookie). Toda visita à página
+  gera pelo menos 2 `PageView` distintos pro mesmo pixel, sem dedup. A
+  configuração do PixelYourSite só tem esse `PageView` estático
+  (`dynamicEvents`/`triggerEvents` vazios) — não duplica `Purchase`/
+  `InitiateCheckout`, então o impacto fica limitado a ruído de alcance/
+  frequência, não a conversões.
+- **Recomendação passada pra usuária**: desativar/remover o plugin
+  PixelYourSite (ou pelo menos seu evento `PageView` estático) já que é a
+  única duplicidade 100% confirmada; remover fisicamente o script solto
+  de UTMify e o loader do GTM/Stape do HTML da página (não só pausar
+  dentro das respectivas plataformas) se quiser um teste "só KTracker" de
+  verdade.
+- **Advanced Matching ampliado na Meta CAPI** (`lib/meta/capi.ts`):
+  além de `em`/`ph`/`external_id`, agora envia `fn`/`ln`/`ct`/`st`/`zp`/
+  `country` (hasheados) quando disponíveis — a Hotmart manda
+  `buyer.first_name`/`last_name`/`address.{city,state,zipcode,country_iso}`
+  no payload de compra (confirmado inspecionando um payload real), então
+  isso só se aplica ao `Purchase` disparado pelo webhook (eventos do
+  `track.js` no site não têm esses dados do comprador ainda). `city`/`zip`
+  removem espaços antes de hashear (normalização da Meta); os demais
+  usam o trim+lowercase que `sha256()` já aplica. Só entra no `user_data`
+  o que vier preenchido — nem todo payload da Hotmart traz endereço.
+- **`meta_test_event_code` checado e confirmado vazio** pra oferta SEDA
+  (não estava suprimindo eventos reais da contagem de otimização/Ads
+  Manager) — só não foi possível checar se sobrou alguma env var legada
+  `META_TEST_EVENT_CODE_SEDA` na Vercel (fallback só usado quando o campo
+  da oferta está vazio, então só importaria se o campo continuasse vazio
+  *e* a env var estivesse setada — vale a usuária conferir por lá também).
+
 ### Bugs encontrados no uso real (pós-Sprint F)
 
 - **"Vendas iniciadas" contando centenas a mais do que deveria**: causa

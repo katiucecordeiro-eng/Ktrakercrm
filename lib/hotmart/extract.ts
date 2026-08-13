@@ -55,11 +55,22 @@ export function extractProductId(data: Json): string | null {
   return null;
 }
 
+// Campos extras pra Advanced Matching da Meta CAPI (fn/ln/ct/st/zp/country)
+// — aumentam a qualidade do match (EMQ) além de email/telefone/external_id.
+// Nem todo payload da Hotmart traz `first_name`/`last_name`/`address`
+// separados (varia por método de pagamento/checkout); ficam `null` quando
+// ausentes, e sendMetaEvent só inclui o campo se vier preenchido.
 export function extractBuyer(data: Json) {
   return {
     email: firstString(data, ["buyer.email"]),
     name: firstString(data, ["buyer.name"]),
     phone: firstString(data, ["buyer.checkout_phone", "buyer.phone"]),
+    firstName: firstString(data, ["buyer.first_name"]),
+    lastName: firstString(data, ["buyer.last_name"]),
+    city: firstString(data, ["buyer.address.city"]),
+    state: firstString(data, ["buyer.address.state"]),
+    zipCode: firstString(data, ["buyer.address.zipcode"]),
+    countryCode: firstString(data, ["buyer.address.country_iso"]),
   };
 }
 

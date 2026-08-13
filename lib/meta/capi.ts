@@ -22,8 +22,23 @@ type SendMetaEventParams = {
   externalId: string;
   email?: string | null;
   phone?: string | null;
+  // Advanced Matching extra — melhora o Event Match Quality (EMQ) além de
+  // email/telefone/external_id. Nem sempre disponíveis (depende do payload
+  // de origem); só entram no user_data quando vierem preenchidos.
+  firstName?: string | null;
+  lastName?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  countryCode?: string | null;
   customData?: Record<string, unknown>;
 };
+
+// Normalização da Meta pra city/zip: minúsculo, sem espaços (fn/ln/st/
+// country já ficam bons só com o trim+lowercase que sha256() já faz).
+function hashNoSpaces(value: string): string {
+  return sha256(value.replace(/\s+/g, ""));
+}
 
 export async function sendMetaEvent(
   params: SendMetaEventParams,
@@ -52,6 +67,12 @@ export async function sendMetaEvent(
   if (params.fbc) userData.fbc = params.fbc;
   if (params.email) userData.em = sha256(params.email);
   if (params.phone) userData.ph = sha256(normalizePhone(params.phone));
+  if (params.firstName) userData.fn = sha256(params.firstName);
+  if (params.lastName) userData.ln = sha256(params.lastName);
+  if (params.city) userData.ct = hashNoSpaces(params.city);
+  if (params.state) userData.st = sha256(params.state);
+  if (params.zipCode) userData.zp = hashNoSpaces(params.zipCode);
+  if (params.countryCode) userData.country = sha256(params.countryCode);
 
   const eventData = {
     event_name: params.eventName,
