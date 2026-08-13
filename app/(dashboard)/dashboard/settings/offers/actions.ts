@@ -76,6 +76,33 @@ export async function createOffer(
   return { success: true };
 }
 
+// Pausa/reativa a oferta com um clique só, sem passar pelo formulário de
+// edição — "offers.active" já bloqueia /api/track (novos eventos, PageView
+// incluso, são rejeitados) e o cron/sync de gasto Meta; o webhook da
+// Hotmart usa esse mesmo campo pra decidir se dispara Purchase pra
+// Meta CAPI/GA4 (nunca deixa de gravar a venda em si — só o sinal externo
+// que para).
+export async function toggleOfferActiveAction(
+  offerId: string,
+  nextActive: boolean,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- assinatura exigida pelo useActionState
+  _prevState: OfferActionState,
+): Promise<OfferActionState> {
+  if (!isSupabaseConfigured()) {
+    return { error: "Supabase não configurado." };
+  }
+
+  const idResult = offerIdSchema.safeParse(offerId);
+  if (!idResult.success) return { error: "ID de oferta inválido" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("offers").update({ active: nextActive }).eq("id", idResult.data);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/settings/offers");
+  return { success: true };
+}
+
 export async function updateOffer(
   offerId: string,
   _prevState: OfferActionState,

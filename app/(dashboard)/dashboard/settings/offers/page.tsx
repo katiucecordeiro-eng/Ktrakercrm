@@ -31,6 +31,7 @@ import { ConnectionTestDialog } from "./connection-test-dialog";
 import { RecentWebhooks } from "./recent-webhooks";
 import { CampaignMappingDialog, type CampaignOption, type CampaignMappingRow } from "./campaign-mapping-dialog";
 import { ProductRolesDialog, type ProductRoleOption } from "./product-roles-dialog";
+import { OfferActiveToggleButton } from "./offer-active-toggle-button";
 import { SystemStatusCard } from "./system-status-card";
 
 async function getOffers(): Promise<Offer[]> {
@@ -224,6 +225,7 @@ export default async function OffersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="flex justify-end gap-2 text-right">
+                        <OfferActiveToggleButton offerId={offer.id} active={offer.active} />
                         <InstallSnippetDialog slug={offer.slug} />
                         <SyncAdSpendDialog offerId={offer.id} />
                         <AccountSpendDialog offerId={offer.id} />

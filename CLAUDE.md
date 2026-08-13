@@ -958,6 +958,37 @@ MAGNETISMO & TENSÃO pós-compra).
   sem nenhum papel configurado, escondendo a seção em vez de mostrar um
   card vazio).
 
+### Pausar oferta sem excluir (pós-lançamento)
+
+Pedido da usuária: um jeito rápido de desligar o tracking/comunicação com
+Meta e Hotmart de uma oferta específica sem apagar o cadastro — usado pra
+isolar se o KTracker tem alguma relação com uma queda de vendas, mantendo
+o GTM/Stape antigo rodando em paralelo pra comparar.
+
+- **Botão "Pausar"/"Ativar"** (`offer-active-toggle-button.tsx`, linha da
+  oferta em Configurações → Ofertas) — um clique só, sem diálogo de
+  confirmação (ação totalmente reversível), flipa `offers.active`. Já
+  existia um toggle "Oferta ativa" dentro do formulário de edição; esse
+  botão é só um atalho mais rápido pro mesmo campo.
+- **O que `active=false` já cortava antes desse pedido**: `/api/track`
+  rejeita com 404 `offer_not_found` (nenhum evento novo é gravado nem
+  repassado à Meta/GA4 — cobre PageView, InitiateCheckout etc. do
+  `track.js`) e o cron/sync de gasto Meta pula a oferta
+  (`syncAllOffers` já filtrava `active=true`).
+- **Gap fechado agora**: o webhook da Hotmart (`handlePurchaseEvent`) não
+  checava `active` — uma venda aprovada continuaria disparando `Purchase`
+  pra Meta CAPI/GA4 mesmo com a oferta pausada. Corrigido com
+  `status === "approved" && !wasApproved && offer.active` antes do
+  disparo. **A venda em si nunca deixa de ser gravada em `sales`**
+  independente do `active` — só o sinal de saída pra Meta/GA4 é
+  cortado, pra nunca perder dado de venda real por causa de um pause.
+- **O que continua rodando mesmo pausado**: o `track.js` na página
+  (reescrita de link de checkout, listeners de clique/vídeo/seção) não
+  sabe do `active` — ele roda 100% client-side e não consulta o servidor
+  antes de agir. Pausar pelo botão para a comunicação server-side; pra
+  eliminar 100% qualquer efeito do script na página, é preciso remover o
+  snippet do WordPress também.
+
 ### Bugs encontrados no uso real (pós-Sprint F)
 
 - **"Vendas iniciadas" contando centenas a mais do que deveria**: causa

@@ -156,7 +156,11 @@ async function handlePurchaseEvent(
 
   await supabase.from("sales").upsert(saleRow, { onConflict: "hotmart_transaction_id" });
 
-  if (status === "approved" && !wasApproved) {
+  // offer.active=false ("Pausar" em Configurações → Ofertas) nunca deixa
+  // de gravar a venda em si — só corta o sinal de saída pra Meta/GA4,
+  // que é o que a usuária quer poder desligar rápido pra isolar se o
+  // tracking tem algo a ver com um problema de vendas, sem perder dado.
+  if (status === "approved" && !wasApproved && offer.active) {
     after(async () => {
       const eventId = `hotmart-${transactionId}`;
       // Usa a data real de aprovação (não o momento do processamento) —
