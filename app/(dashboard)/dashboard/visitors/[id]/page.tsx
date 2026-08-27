@@ -123,6 +123,11 @@ export default async function VisitorProfilePage({
                       <p className="font-mono-nums text-accent">
                         {formatCurrency(sale.gross_value ?? 0, sale.currency)}
                       </p>
+                      {sale.original_currency && sale.original_value !== null ? (
+                        <p className="text-xs text-muted-foreground">
+                          convertido de {formatCurrency(sale.original_value, sale.original_currency)}
+                        </p>
+                      ) : null}
                       <p className="text-xs text-muted-foreground">{sale.status}</p>
                     </div>
                   </div>

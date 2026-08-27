@@ -15,6 +15,7 @@ import {
   extractTransactionId,
 } from "@/lib/hotmart/extract";
 import { fetchAllHotmartSalesForProduct, getHotmartAccessToken } from "@/lib/hotmart/api-client";
+import { convertToBRL, needsConversion } from "@/lib/utils/currency-convert";
 import type { Offer } from "@/lib/types/offer";
 
 type Json = Record<string, unknown>;
@@ -77,11 +78,30 @@ export async function syncOfferSalesHistory(
       const utmMedium = visitor?.utm_medium ?? null;
       const utmContent = visitor?.utm_content ?? null;
 
-      const { value: grossValue, currency } = extractPurchaseValue(data);
+      const { value: originalValue, currency: originalCurrency } = extractPurchaseValue(data);
       const payment = extractPayment(data);
       const product = data.product as Json | undefined;
       const approvedAt = extractApprovedDate(data);
       const orderDate = extractOrderDate(data);
+
+      // Mesma conversão pra BRL do webhook ao vivo — aqui usa a cotação
+      // ATUAL (a AwesomeAPI só expõe a última cotação, não histórica), então
+      // pra vendas antigas é uma aproximação, não o valor exato do dia da
+      // compra; ainda assim bem melhor que somar o número bruto em outra
+      // moeda como se já fosse BRL.
+      let grossValue = originalValue;
+      let currency = originalCurrency;
+      let originalValueForRow: number | null = null;
+      let originalCurrencyForRow: string | null = null;
+      if (originalValue !== null && needsConversion(originalCurrency)) {
+        const converted = await convertToBRL(originalValue, originalCurrency);
+        if (converted) {
+          grossValue = converted.valueBRL;
+          currency = "BRL";
+          originalValueForRow = originalValue;
+          originalCurrencyForRow = originalCurrency;
+        }
+      }
 
       const saleRow: Record<string, unknown> = {
         offer_id: offer.id,
@@ -95,6 +115,8 @@ export async function syncOfferSalesHistory(
         gross_value: grossValue,
         net_value: null,
         currency,
+        original_value: originalValueForRow,
+        original_currency: originalCurrencyForRow,
         buyer_email_hash: buyer.email ? sha256(buyer.email) : null,
         buyer_name: buyer.name,
         utm_source: visitor?.utm_source ?? src ?? null,

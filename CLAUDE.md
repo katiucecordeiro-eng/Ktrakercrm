@@ -1046,6 +1046,42 @@ página (`seda-landing`) e cruzei achados com o banco.
   da oferta está vazio, então só importaria se o campo continuasse vazio
   *e* a env var estivesse setada — vale a usuária conferir por lá também).
 
+### Conversão automática pra BRL (pós-lançamento)
+
+Pedido da usuária: público majoritariamente brasileiro, mas de vez em
+quando aparece um comprador estrangeiro pagando em outra moeda (achado:
+uma leva de vendas em EUR) — sem conversão, `sales.gross_value` gravava o
+número bruto na moeda original, e todo agregado do dashboard (KPIs,
+vendas por produto etc., que só somam `gross_value` sem considerar
+`currency`) tratava esse valor como se já fosse BRL, inflando/distorcendo
+os totais.
+
+- **`lib/utils/currency-convert.ts#convertToBRL`**: cotação via AwesomeAPI
+  (`economia.awesomeapi.com.br`, pública, sem chave) — usada só quando
+  `currency !== "BRL"` (`needsConversion`), com 1 retry e timeout de 5s;
+  em qualquer falha (rede, moeda não suportada, resposta inesperada)
+  devolve `null` e quem chamou mantém o valor original em vez de inventar
+  uma taxa aproximada.
+- **`sales.gross_value`/`currency` sempre em BRL a partir de agora**
+  (webhook ao vivo e backfill retroativo) — migration `0017` adiciona
+  `original_value`/`original_currency` (nulos quando a venda já era em
+  BRL) só como referência/auditoria; a UI do perfil do visitante mostra
+  "convertido de X" quando presente.
+- **Meta CAPI/GA4 recebem o valor/moeda ORIGINAIS da transação, não o
+  convertido** — a Meta já faz sua própria conversão pra moeda da conta
+  ao consolidar ROAS; reconverter antes de mandar seria uma dupla
+  conversão.
+- **Backfill retroativo usa a cotação ATUAL, não a histórica do dia da
+  venda** — a AwesomeAPI só expõe a última cotação (grátis, sem chave);
+  pra vendas antigas em outra moeda o valor em BRL é uma aproximação, não
+  exato, mas ainda assim correto o suficiente pra não inflar o agregado
+  como o número bruto sem conversão nenhuma fazia.
+- **5 vendas em EUR já existentes no banco (antes desse fix) não foram
+  corrigidas automaticamente** — não havia como buscar a cotação
+  histórica de quando essas vendas aconteceram; ficou como ajuste manual
+  pontual pra usuária decidir se vale a pena corrigir esses valores
+  específicos.
+
 ### Bugs encontrados no uso real (pós-Sprint F)
 
 - **"Vendas iniciadas" contando centenas a mais do que deveria**: causa

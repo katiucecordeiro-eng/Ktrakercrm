@@ -20,6 +20,7 @@ import {
   extractApprovedDate,
   PURCHASE_EVENT_STATUS,
 } from "@/lib/hotmart/extract";
+import { convertToBRL, needsConversion } from "@/lib/utils/currency-convert";
 import type { Offer } from "@/lib/types/offer";
 
 export const runtime = "nodejs";
@@ -108,7 +109,35 @@ async function handlePurchaseEvent(
     .maybeSingle();
 
   const wasApproved = existingSale?.status === "approved";
-  const { value: grossValue, currency } = extractPurchaseValue(data);
+  const { value: originalValue, currency: originalCurrency } = extractPurchaseValue(data);
+  // O público é majoritariamente brasileiro, mas de vez em quando um
+  // comprador estrangeiro paga em outra moeda — sem converter, esse valor
+  // entrava bruto no dashboard, somado como se já fosse BRL junto com o
+  // resto (inflando/distorcendo todos os agregados). gross_value/currency
+  // gravados sempre em BRL; original_value/original_currency guardam o
+  // valor bruto original só como referência. Mantém o valor/moeda originais
+  // pro Meta CAPI/GA4 abaixo — a Meta já faz sua própria conversão pra
+  // moeda da conta ao consolidar ROAS, então enviar o valor "de verdade"
+  // da transação é mais correto do que reconverter antes de mandar.
+  let grossValue = originalValue;
+  let currency = originalCurrency;
+  let originalValueForRow: number | null = null;
+  let originalCurrencyForRow: string | null = null;
+  if (originalValue !== null && needsConversion(originalCurrency)) {
+    const converted = await convertToBRL(originalValue, originalCurrency);
+    if (converted) {
+      grossValue = converted.valueBRL;
+      currency = "BRL";
+      originalValueForRow = originalValue;
+      originalCurrencyForRow = originalCurrency;
+    } else {
+      console.error("[api/webhooks/hotmart] falha ao converter valor pra BRL, gravando valor original", {
+        transactionId,
+        originalValue,
+        originalCurrency,
+      });
+    }
+  }
   const payment = extractPayment(data);
   const now = new Date().toISOString();
   // Datas reais da compra (não a hora em que o webhook foi processado) —
@@ -134,6 +163,8 @@ async function handlePurchaseEvent(
     // incorreto no dashboard; fica null até validarmos o payload real.
     net_value: null,
     currency,
+    original_value: originalValueForRow,
+    original_currency: originalCurrencyForRow,
     buyer_email_hash: buyer.email ? sha256(buyer.email) : null,
     buyer_name: buyer.name,
     utm_source: visitor?.utm_source ?? src ?? null,
@@ -191,13 +222,16 @@ async function handlePurchaseEvent(
           state: buyer.state,
           zipCode: buyer.zipCode,
           countryCode: buyer.countryCode,
-          customData: { value: grossValue, currency },
+          // Valor/moeda originais da transação (não o convertido pra BRL)
+          // — a Meta já faz sua própria conversão pra moeda da conta ao
+          // consolidar ROAS.
+          customData: { value: originalValue, currency: originalCurrency },
         }),
         sendGa4Event({
           offer,
           eventName: "Purchase",
           clientId: visitor?.ga_client_id || visitor?.id || transactionId,
-          params: { value: grossValue, currency, transaction_id: transactionId },
+          params: { value: originalValue, currency: originalCurrency, transaction_id: transactionId },
         }),
       ]);
 

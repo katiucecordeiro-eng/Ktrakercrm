@@ -68,6 +68,8 @@ export type VisitorSaleRow = {
   status: string;
   gross_value: number | null;
   currency: string;
+  original_value: number | null;
+  original_currency: string | null;
   payment_method: string | null;
   approved_at: string | null;
   refunded_at: string | null;
