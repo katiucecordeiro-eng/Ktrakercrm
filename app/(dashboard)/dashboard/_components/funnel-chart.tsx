@@ -27,7 +27,15 @@ function conversionVariant(pct: number | null): VariantProps<typeof badgeVariant
   return "destructive";
 }
 
-export function FunnelChart({ steps }: { steps: FunnelStep[] }) {
+export function FunnelChart({
+  steps,
+  title = "Funil de conversão",
+  description = "Cliques → página → checkout iniciado → venda iniciada → venda aprovada, com taxa de conversão entre cada etapa.",
+}: {
+  steps: FunnelStep[];
+  title?: string;
+  description?: string;
+}) {
   const [view, setView] = useState<"funil" | "tabela">("funil");
   const max = Math.max(1, ...steps.map((s) => s.count));
 
@@ -35,11 +43,8 @@ export function FunnelChart({ steps }: { steps: FunnelStep[] }) {
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-4">
         <div>
-          <CardTitle>Funil de conversão</CardTitle>
-          <CardDescription>
-            Cliques → página → checkout iniciado → venda iniciada → venda aprovada,
-            com taxa de conversão entre cada etapa.
-          </CardDescription>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </div>
         <div className="flex gap-1 rounded-md border border-border p-1">
           <Button

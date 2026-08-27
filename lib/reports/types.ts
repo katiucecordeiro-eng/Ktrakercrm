@@ -75,6 +75,14 @@ export type CampaignAdRow = {
   // > 0 no período selecionado = "ativa" (não vem da Meta, que exigiria uma
   // chamada extra pra buscar effective_status da campanha).
   status?: "ativo" | "pausado";
+  // Só preenchidos pela aba Campanhas (getCampaignsFullTable) — a Visão
+  // Geral (getCampaignTable) não computa isso, fica undefined lá.
+  // PageView vem só de events (não tem equivalente reportado pela Meta);
+  // checkout iniciado prefere o valor reportado pela Meta (ad_spend) e cai
+  // pro tracked (events) só se a Meta não retornou nada, igual ao funil
+  // geral (getFunnel).
+  pageviews?: number;
+  initiateCheckout?: number;
 };
 
 export type CampaignRow = CampaignAdRow & {

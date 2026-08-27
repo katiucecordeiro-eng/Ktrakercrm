@@ -58,10 +58,54 @@ function MetricsCells({
           <TableCell className="font-mono-nums">
             {row.cpm !== null ? formatCurrency(row.cpm, currency) : "—"}
           </TableCell>
+          <TableCell className="font-mono-nums">{formatNumber(row.clicks)}</TableCell>
+          <TableCell className="font-mono-nums">
+            {row.pageviews !== undefined ? formatNumber(row.pageviews) : "—"}
+          </TableCell>
+          <TableCell className="font-mono-nums">
+            {row.initiateCheckout !== undefined ? formatNumber(row.initiateCheckout) : "—"}
+          </TableCell>
+          <TableCell className="font-mono-nums">{formatNumber(row.salesCount)}</TableCell>
         </>
       ) : null}
     </>
   );
+}
+
+// Soma todas as linhas de campanha visíveis (inclusive "sem atribuição",
+// se estiver na lista) — representa exatamente o que está sendo somado
+// visualmente acima, não só as campanhas atribuídas. Razões (ROAS, CPA,
+// CTR, CPC, CPM, frequência) recalculadas a partir dos totais brutos
+// (ponderado), nunca por média simples das linhas.
+function computeTotals(rows: CampaignRow[]): CampaignAdRow {
+  const spend = rows.reduce((sum, r) => sum + r.spend, 0);
+  const revenue = rows.reduce((sum, r) => sum + r.revenue, 0);
+  const salesCount = rows.reduce((sum, r) => sum + r.salesCount, 0);
+  const clicks = rows.reduce((sum, r) => sum + r.clicks, 0);
+  const impressions = rows.reduce((sum, r) => sum + r.impressions, 0);
+  const reach = rows.reduce((sum, r) => sum + r.reach, 0);
+  const pageviews = rows.reduce((sum, r) => sum + (r.pageviews ?? 0), 0);
+  const initiateCheckout = rows.reduce((sum, r) => sum + (r.initiateCheckout ?? 0), 0);
+
+  return {
+    id: "__total__",
+    name: "Total",
+    offerId: "",
+    spend,
+    revenue,
+    salesCount,
+    clicks,
+    impressions,
+    reach,
+    pageviews,
+    initiateCheckout,
+    roas: spend > 0 ? revenue / spend : null,
+    cpa: salesCount > 0 ? spend / salesCount : null,
+    ctr: impressions > 0 ? (clicks / impressions) * 100 : null,
+    cpc: clicks > 0 ? spend / clicks : null,
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : null,
+    frequency: reach > 0 ? impressions / reach : null,
+  };
 }
 
 export function CampaignTable({
@@ -157,6 +201,10 @@ export function CampaignTable({
                     <TableHead>Frequência</TableHead>
                     <TableHead>CPC</TableHead>
                     <TableHead>CPM</TableHead>
+                    <TableHead>Cliques</TableHead>
+                    <TableHead>Visualizações de página</TableHead>
+                    <TableHead>IC</TableHead>
+                    <TableHead>Compras</TableHead>
                   </>
                 ) : null}
               </TableRow>
@@ -245,6 +293,19 @@ export function CampaignTable({
                   </Fragment>
                 );
               })}
+              {showStatus ? (
+                <TableRow className="border-t-2 border-accent bg-accent/10 font-semibold hover:bg-accent/10">
+                  <TableCell className="text-foreground">Total</TableCell>
+                  {showStatus ? <TableCell /> : null}
+                  {renderActions ? <TableCell /> : null}
+                  <MetricsCells
+                    row={computeTotals(rows)}
+                    currency={currency}
+                    showMore={showMore}
+                    roasTarget={roasTarget}
+                  />
+                </TableRow>
+              ) : null}
             </TableBody>
           </Table>
         )}

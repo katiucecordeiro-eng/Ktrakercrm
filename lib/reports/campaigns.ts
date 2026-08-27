@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { computeAdMetrics } from "./queries";
-import type { CampaignAdRow, CampaignRow, ReportFilters, RoasPoint } from "./types";
+import { resolveCampaignId, type RealCampaignInfo } from "./attribution";
+import { buildFunnelSteps } from "./funnel-utils";
+import { extractIdFromUtm } from "@/lib/hotmart/extract";
+import type { CampaignAdRow, CampaignRow, FunnelStep, ReportFilters, RoasPoint } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- builder do supabase-js
 function applyOfferFilter(query: any, offerId: string | null): any {
@@ -10,14 +13,6 @@ function applyOfferFilter(query: any, offerId: string | null): any {
 
 function isoDate(date: Date) {
   return date.toISOString().slice(0, 10);
-}
-
-function normalizeForMatch(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
 }
 
 type AdSpendRow = {
@@ -32,6 +27,7 @@ type AdSpendRow = {
   clicks: number;
   impressions: number;
   reach: number;
+  meta_initiate_checkout: number | null;
 };
 
 type SaleAttributionRow = {
@@ -43,6 +39,14 @@ type SaleAttributionRow = {
   gross_value: number | null;
 };
 
+type EventAttributionRow = {
+  offer_id: string;
+  event_name: string;
+  utm_campaign: string | null;
+  utm_medium: string | null;
+  utm_content: string | null;
+};
+
 type Acc = {
   name: string;
   offerId: string;
@@ -52,6 +56,13 @@ type Acc = {
   clicks: number;
   impressions: number;
   reach: number;
+  // pageviews só vem de events (a Meta não reporta "visualização de
+  // página" no Insights); checkout iniciado prefere o valor reportado
+  // pela Meta e cai pro tracked (events) só se a Meta não retornou nada —
+  // mesma regra do funil geral (getFunnel/queries.ts).
+  pageviews: number;
+  metaInitiateCheckout: number;
+  trackedInitiateCheckout: number;
 };
 
 type CampaignAcc = Acc & {
@@ -59,11 +70,25 @@ type CampaignAcc = Acc & {
 };
 
 function emptyAcc(name: string, offerId: string): Acc {
-  return { name, offerId, spend: 0, revenue: 0, salesCount: 0, clicks: 0, impressions: 0, reach: 0 };
+  return {
+    name,
+    offerId,
+    spend: 0,
+    revenue: 0,
+    salesCount: 0,
+    clicks: 0,
+    impressions: 0,
+    reach: 0,
+    pageviews: 0,
+    metaInitiateCheckout: 0,
+    trackedInitiateCheckout: 0,
+  };
 }
 
 function toAdRow(id: string, acc: Acc): CampaignAdRow {
-  return { ...acc, id, ...computeAdMetrics(acc) };
+  const { metaInitiateCheckout, trackedInitiateCheckout, ...rest } = acc;
+  const initiateCheckout = metaInitiateCheckout > 0 ? metaInitiateCheckout : trackedInitiateCheckout;
+  return { ...rest, id, initiateCheckout, ...computeAdMetrics(acc) };
 }
 
 async function fetchAdSpendRows(
@@ -74,7 +99,7 @@ async function fetchAdSpendRows(
     supabase
       .from("ad_spend")
       .select(
-        "offer_id, campaign_id, campaign_name, adset_id, adset_name, ad_id, ad_name, spend, clicks, impressions, reach",
+        "offer_id, campaign_id, campaign_name, adset_id, adset_name, ad_id, ad_name, spend, clicks, impressions, reach, meta_initiate_checkout",
       )
       .gte("date", isoDate(filters.since))
       .lte("date", isoDate(filters.until)),
@@ -101,6 +126,41 @@ async function fetchApprovedSales(
   return (data as SaleAttributionRow[] | null) ?? [];
 }
 
+// Qualquer status, por created_at — usado só pra "Vendas iniciadas" no
+// funil por campanha (getCampaignFunnel), igual ao funil geral.
+async function fetchAllSalesInPeriod(
+  supabase: SupabaseClient,
+  filters: ReportFilters,
+): Promise<SaleAttributionRow[]> {
+  const query = applyOfferFilter(
+    supabase
+      .from("sales")
+      .select("offer_id, campaign_id, adset_id, ad_id, utm_campaign, gross_value")
+      .gte("created_at", filters.since.toISOString())
+      .lte("created_at", filters.until.toISOString()),
+    filters.offerId,
+  );
+  const { data } = await query;
+  return (data as SaleAttributionRow[] | null) ?? [];
+}
+
+async function fetchFunnelEvents(
+  supabase: SupabaseClient,
+  filters: ReportFilters,
+): Promise<EventAttributionRow[]> {
+  const query = applyOfferFilter(
+    supabase
+      .from("events")
+      .select("offer_id, event_name, utm_campaign, utm_medium, utm_content")
+      .in("event_name", ["PageView", "InitiateCheckout"])
+      .gte("created_at", filters.since.toISOString())
+      .lte("created_at", filters.until.toISOString()),
+    filters.offerId,
+  );
+  const { data } = await query;
+  return (data as EventAttributionRow[] | null) ?? [];
+}
+
 async function fetchManualMappings(
   supabase: SupabaseClient,
   filters: ReportFilters,
@@ -117,56 +177,31 @@ async function fetchManualMappings(
   return map;
 }
 
-// Resolve a campanha real de uma venda em 3 níveis de confiança:
-// 1) match exato do campaign_id extraído da UTM contra um campaign_id real
-//    (convenção {{campaign.id}}--{{campaign.name}} seguida corretamente);
-// 2) mapeamento manual cadastrado em Configurações (offer_id + utm_campaign
-//    bruto → campaign_id real), pra quando o nome não bate por fuzzy match;
-// 3) fallback por nome: normaliza o utm_campaign bruto e a campanha real e
-//    testa se um contém o outro — cobre o caso de o anúncio usar o nome da
-//    campanha como utm_campaign em vez do id.
-// Sem nenhum dos três, a venda cai no bucket "sem atribuição".
-function resolveCampaignId(
+function resolveSaleCampaignId(
   sale: SaleAttributionRow,
-  realCampaigns: Map<string, { campaignName: string | null }>,
+  realCampaigns: Map<string, RealCampaignInfo>,
   manualMappings: Map<string, string>,
 ): string | null {
-  if (sale.campaign_id) {
-    const key = `${sale.offer_id}::${sale.campaign_id}`;
-    if (realCampaigns.has(key)) return sale.campaign_id;
-  }
-
-  if (sale.utm_campaign) {
-    const manual = manualMappings.get(`${sale.offer_id}::${sale.utm_campaign}`);
-    if (manual && realCampaigns.has(`${sale.offer_id}::${manual}`)) return manual;
-
-    const needle = normalizeForMatch(sale.utm_campaign);
-    if (needle) {
-      for (const [key, campaign] of realCampaigns) {
-        if (!key.startsWith(`${sale.offer_id}::`)) continue;
-        const name = normalizeForMatch(campaign.campaignName ?? "");
-        if (name && (name.includes(needle) || needle.includes(name))) {
-          return key.slice(`${sale.offer_id}::`.length);
-        }
-      }
-    }
-  }
-
-  return null;
+  return resolveCampaignId(
+    { offerId: sale.offer_id, campaignId: sale.campaign_id, utmCampaign: sale.utm_campaign },
+    realCampaigns,
+    manualMappings,
+  );
 }
 
 export async function getCampaignsFullTable(
   supabase: SupabaseClient,
   filters: ReportFilters,
 ): Promise<{ rows: CampaignRow[]; unattributedRevenue: number; unattributedCount: number }> {
-  const [adSpendRows, sales, manualMappings] = await Promise.all([
+  const [adSpendRows, sales, manualMappings, events] = await Promise.all([
     fetchAdSpendRows(supabase, filters),
     fetchApprovedSales(supabase, filters),
     fetchManualMappings(supabase, filters),
+    fetchFunnelEvents(supabase, filters),
   ]);
 
   const campaigns = new Map<string, CampaignAcc>();
-  const realCampaigns = new Map<string, { campaignName: string | null }>();
+  const realCampaigns = new Map<string, RealCampaignInfo>();
 
   for (const row of adSpendRows) {
     if (!row.campaign_id) continue;
@@ -184,6 +219,7 @@ export async function getCampaignsFullTable(
     campaign.clicks += Number(row.clicks);
     campaign.impressions += Number(row.impressions);
     campaign.reach += Number(row.reach);
+    campaign.metaInitiateCheckout += Number(row.meta_initiate_checkout ?? 0);
     if (row.campaign_name) campaign.name = row.campaign_name;
 
     const adsetId = row.adset_id || "sem-conjunto";
@@ -198,6 +234,7 @@ export async function getCampaignsFullTable(
     adset.clicks += Number(row.clicks);
     adset.impressions += Number(row.impressions);
     adset.reach += Number(row.reach);
+    adset.metaInitiateCheckout += Number(row.meta_initiate_checkout ?? 0);
     if (row.adset_name) adset.name = row.adset_name;
 
     const adId = row.ad_id || "sem-anuncio";
@@ -209,6 +246,7 @@ export async function getCampaignsFullTable(
     ad.clicks += Number(row.clicks);
     ad.impressions += Number(row.impressions);
     ad.reach += Number(row.reach);
+    ad.metaInitiateCheckout += Number(row.meta_initiate_checkout ?? 0);
     if (row.ad_name) ad.name = row.ad_name;
   }
 
@@ -217,7 +255,7 @@ export async function getCampaignsFullTable(
 
   for (const sale of sales) {
     const revenue = Number(sale.gross_value ?? 0);
-    const resolvedCampaignId = resolveCampaignId(sale, realCampaigns, manualMappings);
+    const resolvedCampaignId = resolveSaleCampaignId(sale, realCampaigns, manualMappings);
 
     if (!resolvedCampaignId) {
       unattributedRevenue += revenue;
@@ -251,6 +289,38 @@ export async function getCampaignsFullTable(
     }
   }
 
+  // Visualizações de página e checkout iniciado "rastreado" (fallback do
+  // reportado pela Meta) vêm de events, atribuídos pela mesma convenção de
+  // UTM — só desce pra conjunto/anúncio em match exato, igual às vendas.
+  for (const event of events) {
+    const candidateCampaignId = extractIdFromUtm(event.utm_campaign);
+    const resolvedCampaignId = resolveCampaignId(
+      { offerId: event.offer_id, campaignId: candidateCampaignId, utmCampaign: event.utm_campaign },
+      realCampaigns,
+      manualMappings,
+    );
+    if (!resolvedCampaignId) continue;
+
+    const campaign = campaigns.get(`${event.offer_id}::${resolvedCampaignId}`);
+    if (!campaign) continue;
+
+    const isPageView = event.event_name === "PageView";
+    if (isPageView) campaign.pageviews += 1;
+    else campaign.trackedInitiateCheckout += 1;
+
+    const candidateAdsetId = extractIdFromUtm(event.utm_medium);
+    const exactAdset = candidateAdsetId ? campaign.adsets.get(candidateAdsetId) : undefined;
+    if (!exactAdset) continue;
+    if (isPageView) exactAdset.pageviews += 1;
+    else exactAdset.trackedInitiateCheckout += 1;
+
+    const candidateAdId = extractIdFromUtm(event.utm_content);
+    const exactAd = candidateAdId ? exactAdset.ads.get(candidateAdId) : undefined;
+    if (!exactAd) continue;
+    if (isPageView) exactAd.pageviews += 1;
+    else exactAd.trackedInitiateCheckout += 1;
+  }
+
   const ROAS_ACTIVE_THRESHOLD = 0;
   const rows: CampaignRow[] = Array.from(campaigns.entries()).map(([campaignKey, campaign]) => {
     const [, campaignId] = campaignKey.split("::") as [string, string];
@@ -279,6 +349,8 @@ export async function getCampaignsFullTable(
       clicks: 0,
       impressions: 0,
       reach: 0,
+      pageviews: 0,
+      initiateCheckout: 0,
       roas: null,
       cpa: null,
       ctr: null,
@@ -366,4 +438,68 @@ export async function getRoasTimeSeries(
       revenue: value.revenue,
       roas: value.spend > 0 ? value.revenue / value.spend : null,
     }));
+}
+
+// Funil de conversão de uma campanha específica — mesmas 5 etapas do funil
+// geral (getFunnel, Visão Geral), só que filtradas pra um campaignId só.
+// Faz fetches próprios (não reaproveita getCampaignsFullTable) porque
+// precisa de "vendas iniciadas" (qualquer status, por created_at), que a
+// tabela de campanhas não calcula — só conta vendas aprovadas.
+export async function getCampaignFunnel(
+  supabase: SupabaseClient,
+  filters: ReportFilters,
+  campaignId: string,
+): Promise<FunnelStep[]> {
+  const [adSpendRows, allSales, approvedSales, manualMappings, events] = await Promise.all([
+    fetchAdSpendRows(supabase, filters),
+    fetchAllSalesInPeriod(supabase, filters),
+    fetchApprovedSales(supabase, filters),
+    fetchManualMappings(supabase, filters),
+    fetchFunnelEvents(supabase, filters),
+  ]);
+
+  const realCampaigns = new Map<string, RealCampaignInfo>();
+  let clicks = 0;
+  let metaInitiateCheckout = 0;
+  for (const row of adSpendRows) {
+    if (!row.campaign_id) continue;
+    realCampaigns.set(`${row.offer_id}::${row.campaign_id}`, { campaignName: row.campaign_name });
+    if (row.campaign_id === campaignId) {
+      clicks += Number(row.clicks);
+      metaInitiateCheckout += Number(row.meta_initiate_checkout ?? 0);
+    }
+  }
+
+  let pageviews = 0;
+  let trackedInitiateCheckout = 0;
+  for (const event of events) {
+    const candidateCampaignId = extractIdFromUtm(event.utm_campaign);
+    const resolved = resolveCampaignId(
+      { offerId: event.offer_id, campaignId: candidateCampaignId, utmCampaign: event.utm_campaign },
+      realCampaigns,
+      manualMappings,
+    );
+    if (resolved !== campaignId) continue;
+    if (event.event_name === "PageView") pageviews += 1;
+    else trackedInitiateCheckout += 1;
+  }
+  const initiateCheckout = metaInitiateCheckout > 0 ? metaInitiateCheckout : trackedInitiateCheckout;
+
+  let initiatedSales = 0;
+  for (const sale of allSales) {
+    if (resolveSaleCampaignId(sale, realCampaigns, manualMappings) === campaignId) initiatedSales += 1;
+  }
+
+  let approvedCount = 0;
+  for (const sale of approvedSales) {
+    if (resolveSaleCampaignId(sale, realCampaigns, manualMappings) === campaignId) approvedCount += 1;
+  }
+
+  return buildFunnelSteps([
+    { label: "Cliques", count: clicks },
+    { label: "Visualizações de página", count: pageviews },
+    { label: "Checkouts iniciados", count: initiateCheckout },
+    { label: "Vendas iniciadas", count: initiatedSales },
+    { label: "Vendas aprovadas", count: approvedCount },
+  ]);
 }

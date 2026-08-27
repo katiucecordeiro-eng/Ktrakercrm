@@ -747,6 +747,64 @@ globais), filtro de status, cards de resumo, 2 gráficos e export CSV.
   como botão "Mais colunas" (Sprint A/B) — reaproveitado como está, sem
   criar um segundo controle de colunas.
 
+### Funil por campanha + colunas de funil + totalizador (pós-lançamento)
+
+Pedido da usuária: filtrar por campanha na aba Campanhas e ver o mesmo
+funil da Visão Geral só daquela campanha, mais colunas de
+cliques/visualizações de página/checkout iniciado/compras em "Mais
+colunas", e uma linha de total destacada no fim da tabela.
+
+- **`lib/reports/attribution.ts`** (novo): `resolveCampaignId`/
+  `normalizeForMatch` extraídos de `campaigns.ts` pra um módulo
+  compartilhado — a mesma resolução de 3 níveis (match exato / mapeamento
+  manual / fallback por nome) agora também atribui **events** (PageView,
+  InitiateCheckout) a uma campanha, não só vendas. Sem isso, o funil por
+  campanha usaria uma régua diferente da tabela pra decidir o que
+  pertence a cada campanha, o que faria os números não baterem entre
+  funil e tabela pra uma mesma campanha.
+- **`getCampaignFunnel(supabase, filters, campaignId)`** (`campaigns.ts`):
+  monta as mesmas 5 etapas do funil geral (`getFunnel`) — Cliques (`ad_spend`),
+  Visualizações de página (`events`, só rastreamento próprio — a Meta não
+  reporta isso no Insights), Checkouts iniciados (prefere
+  `ad_spend.meta_initiate_checkout`, cai pro `events` rastreado só se a
+  Meta não retornou nada, igual ao funil geral), Vendas iniciadas
+  (`sales`, qualquer status, por `created_at`) e Vendas aprovadas
+  (`sales`, `status = 'approved'`, por `approved_at`) — mas filtradas pra
+  uma campanha só. Faz fetches próprios em vez de reaproveitar
+  `getCampaignsFullTable` porque precisa de "vendas iniciadas" (qualquer
+  status), que a tabela de campanhas não calcula (só conta aprovadas).
+- **`CampaignFilter`** (`campaign-filter.tsx`, querystring `?campaign=`):
+  opções vêm das próprias campanhas já carregadas na página (sem query
+  extra); selecionar uma campanha filtra a tabela pra só ela (esconde as
+  outras e a linha "sem atribuição") e revela o `FunnelChart` acima,
+  com o nome da campanha no título (`FunnelChart` ganhou `title`/
+  `description` opcionais pra isso, com o texto genérico de antes como
+  default — a Visão Geral continua sem passar nada, comportamento
+  idêntico). Se a campanha do `?campaign=` não existe mais nesse recorte
+  (trocou de oferta/período), o filtro simplesmente ignora em vez de
+  quebrar.
+- **Novas colunas em "Mais colunas"**: Cliques, Visualizações de página,
+  IC e Compras — as duas primeiras exigiram estender `getCampaignsFullTable`
+  pra também atribuir `events` a cada campanha/conjunto/anúncio (mesma
+  regra de "só desce a conjunto/anúncio em match exato" que as vendas já
+  usavam); Cliques e Compras já existiam como dado (`clicks`/`salesCount`),
+  só faltava expor como coluna — ficam ao lado das novas por pedido
+  explícito, mesmo repetindo parcialmente "CTR"/"Vendas" que já aparecem
+  sempre visíveis. `CampaignAdRow.pageviews`/`initiateCheckout` são
+  opcionais no tipo — a Visão Geral (`getCampaignTable`, view
+  `campaign_performance`) não computa isso, então essas colunas mostram
+  "—" lá se algum dia forem exibidas (hoje só a aba Campanhas passa
+  `showFunnelColumns` implicitamente via dado presente).
+- **Linha de total destacada** (`computeTotals` em `campaign-table.tsx`):
+  soma todas as linhas de campanha visíveis (inclusive "sem atribuição",
+  se estiver na lista — representa exatamente o que está sendo somado
+  acima) e recalcula ROAS/CPA/CTR/CPC/CPM/frequência a partir dos totais
+  brutos (ponderado), nunca por média simples das linhas. Só aparece na
+  aba Campanhas (`showStatus`, mesmo flag que já distinguia Campanhas da
+  Visão Geral) — a Visão Geral não pediu isso e continua sem a linha.
+  CSV de exportação também ganhou as 4 colunas novas, pro arquivo bater
+  com o que a tabela mostra.
+
 ### Aba Meta Business Intelligence ("Sprint E", pós-lançamento)
 
 Nova página `/dashboard/meta-intelligence` (item "Meta Intelligence" na

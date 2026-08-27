@@ -13,6 +13,7 @@ import type {
   ReportFilters,
   TimeSeriesPoint,
 } from "./types";
+import { buildFunnelSteps } from "./funnel-utils";
 
 function isoDate(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -171,25 +172,13 @@ export async function getFunnel(
   const initiatedSales = dailyRows.reduce((sum, row) => sum + row.initiated_count, 0);
   const approvedSales = dailyRows.reduce((sum, row) => sum + row.sales_count, 0);
 
-  const counts = [
+  return buildFunnelSteps([
     { label: "Cliques", count: clicks },
     { label: "Visualizações de página", count: pageviews },
     { label: "Checkouts iniciados", count: initiateCheckout },
     { label: "Vendas iniciadas", count: initiatedSales },
     { label: "Vendas aprovadas", count: approvedSales },
-  ];
-
-  const first = counts[0]?.count || 0;
-
-  return counts.map((step, index) => {
-    const previous = index > 0 ? counts[index - 1]!.count : null;
-    return {
-      label: step.label,
-      count: step.count,
-      conversionFromPrevious: previous && previous > 0 ? (step.count / previous) * 100 : null,
-      conversionFromFirst: first > 0 ? (step.count / first) * 100 : null,
-    };
-  });
+  ]);
 }
 
 // ── Série temporal ────────────────────────────────────────────────────

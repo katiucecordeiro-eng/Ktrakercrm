@@ -23,7 +23,26 @@ const CSV_HEADERS = [
   "CTR (%)",
   "Impressões",
   "Cliques",
+  "Visualizações de página",
+  "IC",
+  "Compras",
 ];
+
+function campaignAdRowToCsvTail(row: CampaignAdRow) {
+  return [
+    row.spend,
+    row.revenue,
+    row.salesCount,
+    row.roas,
+    row.cpa,
+    row.ctr,
+    row.impressions,
+    row.clicks,
+    row.pageviews ?? null,
+    row.initiateCheckout ?? null,
+    row.salesCount,
+  ];
+}
 
 function buildCsv(rows: CampaignRow[]): string {
   const lines: (string | number | null)[][] = [];
@@ -34,47 +53,12 @@ function buildCsv(rows: CampaignRow[]): string {
       "",
       "",
       campaign.unattributed ? "" : campaign.status === "ativo" ? "Ativa" : "Pausada",
-      campaign.spend,
-      campaign.revenue,
-      campaign.salesCount,
-      campaign.roas,
-      campaign.cpa,
-      campaign.ctr,
-      campaign.impressions,
-      campaign.clicks,
+      ...campaignAdRowToCsvTail(campaign),
     ]);
     for (const adset of campaign.adsets) {
-      lines.push([
-        "Conjunto",
-        campaign.name,
-        adset.name,
-        "",
-        "",
-        adset.spend,
-        adset.revenue,
-        adset.salesCount,
-        adset.roas,
-        adset.cpa,
-        adset.ctr,
-        adset.impressions,
-        adset.clicks,
-      ]);
+      lines.push(["Conjunto", campaign.name, adset.name, "", "", ...campaignAdRowToCsvTail(adset)]);
       for (const ad of adset.ads) {
-        lines.push([
-          "Anúncio",
-          campaign.name,
-          adset.name,
-          ad.name,
-          "",
-          ad.spend,
-          ad.revenue,
-          ad.salesCount,
-          ad.roas,
-          ad.cpa,
-          ad.ctr,
-          ad.impressions,
-          ad.clicks,
-        ]);
+        lines.push(["Anúncio", campaign.name, adset.name, ad.name, "", ...campaignAdRowToCsvTail(ad)]);
       }
     }
   }
