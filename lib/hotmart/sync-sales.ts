@@ -6,6 +6,7 @@ import {
   extractApprovedDate,
   extractBuyer,
   extractIdFromUtm,
+  extractNetValue,
   extractOrderDate,
   extractPayment,
   extractPurchaseValue,
@@ -93,6 +94,12 @@ export async function syncOfferSalesHistory(
       let currency = originalCurrency;
       let originalValueForRow: number | null = null;
       let originalCurrencyForRow: string | null = null;
+      // Ressalva do mesmo tipo já documentada pro resto do backfill: não
+      // pôde ser confirmado se a API de Histórico de Vendas traz
+      // `commissions` no mesmo formato do payload do webhook — se não
+      // trouxer, extractNetValue devolve null e o fallback do agregado
+      // (usar gross_value) entra em ação, sem quebrar a importação.
+      let netValue = extractNetValue(data);
       if (originalValue !== null && needsConversion(originalCurrency)) {
         const converted = await convertToBRL(originalValue, originalCurrency);
         if (converted) {
@@ -100,6 +107,7 @@ export async function syncOfferSalesHistory(
           currency = "BRL";
           originalValueForRow = originalValue;
           originalCurrencyForRow = originalCurrency;
+          if (netValue !== null) netValue *= converted.rate;
         }
       }
 
@@ -113,7 +121,7 @@ export async function syncOfferSalesHistory(
         payment_method: payment.method,
         installments: payment.installments,
         gross_value: grossValue,
-        net_value: null,
+        net_value: netValue,
         currency,
         original_value: originalValueForRow,
         original_currency: originalCurrencyForRow,

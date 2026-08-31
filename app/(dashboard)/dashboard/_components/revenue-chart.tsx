@@ -102,7 +102,7 @@ export function RevenueChart({
                   />
                   <Tooltip content={<ChartTooltip currency={currency} />} cursor={{ fill: "var(--surface-hover)" }} />
                   <Legend wrapperStyle={{ fontSize: 12, color: "var(--muted-foreground)" }} />
-                  <Bar dataKey="revenue" name="Faturamento" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="revenue" name="Faturamento líquido" fill="var(--accent)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="adSpend" name="Gasto" fill="var(--warning)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="profit" name="Lucro" fill="var(--foreground)" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -129,7 +129,7 @@ export function RevenueChart({
                   <Line
                     type="monotone"
                     dataKey="revenue"
-                    name="Faturamento"
+                    name="Faturamento líquido"
                     stroke="var(--accent)"
                     strokeWidth={2}
                     dot={false}

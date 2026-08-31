@@ -1140,6 +1140,62 @@ os totais.
   pontual pra usuária decidir se vale a pena corrigir esses valores
   específicos.
 
+### Faturamento líquido = comissão real, não bruto − reembolso (pós-lançamento)
+
+Pedido da usuária comparando os números do KTracker com a Utmify (mesmo
+período, mesma oferta) — os KPIs não batiam. Duas causas raiz distintas:
+
+- **"Faturamento líquido"/ROAS/margem usavam o valor bruto da venda (o
+  que o comprador pagou), não a comissão que a usuária de fato recebe** —
+  a Hotmart fica com uma fatia (`data.commissions`, entrada `source:
+  "MARKETPLACE"`) antes de repassar o resto (`source: "PRODUCER"`, a
+  parte da usuária). `lib/hotmart/extract.ts#extractNetValue` soma as
+  entradas `PRODUCER` e popula `sales.net_value` (coluna já existia desde
+  a Sprint 3, sempre nula até agora) — tanto no webhook ao vivo quanto no
+  backfill retroativo, com a mesma conversão de moeda já aplicada ao
+  valor bruto quando a venda é em outra moeda. As ~118 vendas aprovadas/
+  reembolsadas já existentes no banco foram corrigidas direto via SQL a
+  partir do `raw_payload` já salvo (sem precisar reprocessar nada).
+- **Reembolso não é descontado do faturamento líquido/ROAS/margem** —
+  fica só no card "Vendas reembolsadas" separado, conferido número a
+  número contra a Utmify pra confirmar essa convenção (`Faturamento
+  Líquido`, `ROAS` e `Margem` da Utmify batem exatamente usando só
+  `net_commission`, sem subtrair `refunded_net_commission`). "Lucro"
+  também não desconta reembolso — só gasto e imposto.
+- **`daily_metrics`** (migration `0018`) ganhou `net_commission`/
+  `refunded_net_commission` (soma de `net_value`, com fallback pro bruto
+  quando `net_value` ainda é nulo — payload sem `commissions`, ex. venda
+  muito antiga) e `pending_value`/`pending_count` (vendas com `status =
+  'pending'`, agrupadas por `created_at` já que não têm `approved_at`).
+  Colunas novas entram no final do `select` da view — o Postgres não
+  deixa `create or replace view` mudar posição/nome de coluna existente.
+- **`getKpis` reescrito**: `netRevenue` agora é só `net_commission`
+  (comissão das vendas aprovadas, sem reembolso); `roas = netRevenue ÷
+  adSpend`; `marginPct = profit ÷ netRevenue`; imposto calculado sobre
+  `net_commission` (dinheiro real recebido), não mais sobre o bruto.
+  `refundedValue` do KPI "Vendas reembolsadas" também virou a comissão
+  reembolsada, não o valor bruto do reembolso. O gráfico "Faturamento ×
+  gasto × lucro" (`getTimeSeries`) e a "Evolução do ROAS por dia" da aba
+  Campanhas (`getRoasTimeSeries`) foram atualizados pra usar a mesma base
+  — sem isso, o card do topo e os gráficos abaixo mostrariam números
+  diferentes pra mesma métrica na mesma página.
+- **Novo card "Vendas pendentes"** (quantidade + valor bruto — o split de
+  comissão normalmente só existe depois que o pagamento é confirmado,
+  então "pendente" mostra o bruto mesmo mais como referência de "quanto
+  pode ainda entrar"). Vendas pendentes **já eram** excluídas do
+  faturamento (a view sempre filtrou `status = 'approved'`) — o problema
+  real era só a comissão vs. bruto acima; o card deixa isso visualmente
+  explícito, igual à Utmify.
+- **Escopo não alterado nesta rodada**: o ROAS/faturamento *por campanha*
+  na tabela de Campanhas (`lib/reports/campaigns.ts#getCampaignsFullTable`,
+  usado no drill-down campanha → conjunto → anúncio, no CSV exportado e
+  nos cards de resumo) continua baseado no valor bruto — mudar isso
+  exigiria reescrever toda a atribuição de venda por campanha pra
+  trabalhar com `net_value` em vez de `gross_value`, um escopo bem maior
+  que o pedido original; ainda não fizemos pra não arriscar quebrar a
+  atribuição já testada. Fica como ajuste futuro se a usuária quiser
+  paridade total.
+
 ### Bugs encontrados no uso real (pós-Sprint F)
 
 - **"Vendas iniciadas" contando centenas a mais do que deveria**: causa

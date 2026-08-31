@@ -95,6 +95,26 @@ export function extractPurchaseValue(data: Json) {
   };
 }
 
+// Comissão líquida da usuária (o que ela de fato recebe, já descontada a
+// taxa da Hotmart) — soma as entradas com source "PRODUCER" em
+// data.commissions (confirmado inspecionando payloads reais; a outra
+// entrada, "MARKETPLACE", é a taxa que fica com a Hotmart, não com ela).
+// null quando o payload não trouxe commissions (ex. venda pendente, cujo
+// split ainda não foi calculado) — quem chamar decide o fallback, nunca
+// assume um valor aproximado.
+export function extractNetValue(data: Json): number | null {
+  const commissions = get(data, "commissions");
+  if (!Array.isArray(commissions)) return null;
+
+  let total: number | null = null;
+  for (const entry of commissions as Json[]) {
+    if (entry.source !== "PRODUCER") continue;
+    const value = entry.value;
+    if (typeof value === "number") total = (total ?? 0) + value;
+  }
+  return total;
+}
+
 export function extractPayment(data: Json) {
   return {
     method: firstString(data, ["purchase.payment.type", "purchase.payment.method"]),

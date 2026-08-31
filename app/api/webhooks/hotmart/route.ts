@@ -18,6 +18,7 @@ import {
   extractIdFromUtm,
   extractOrderDate,
   extractApprovedDate,
+  extractNetValue,
   PURCHASE_EVENT_STATUS,
 } from "@/lib/hotmart/extract";
 import { convertToBRL, needsConversion } from "@/lib/utils/currency-convert";
@@ -123,6 +124,10 @@ async function handlePurchaseEvent(
   let currency = originalCurrency;
   let originalValueForRow: number | null = null;
   let originalCurrencyForRow: string | null = null;
+  // Comissão líquida (o que a usuária de fato recebe, sem a taxa da
+  // Hotmart) — mesma taxa de câmbio da conversão do valor bruto acima,
+  // já que a Hotmart faz o split de comissão na moeda da própria venda.
+  let netValue = extractNetValue(data);
   if (originalValue !== null && needsConversion(originalCurrency)) {
     const converted = await convertToBRL(originalValue, originalCurrency);
     if (converted) {
@@ -130,6 +135,7 @@ async function handlePurchaseEvent(
       currency = "BRL";
       originalValueForRow = originalValue;
       originalCurrencyForRow = originalCurrency;
+      if (netValue !== null) netValue *= converted.rate;
     } else {
       console.error("[api/webhooks/hotmart] falha ao converter valor pra BRL, gravando valor original", {
         transactionId,
@@ -158,10 +164,9 @@ async function handlePurchaseEvent(
     payment_method: payment.method,
     installments: payment.installments,
     gross_value: grossValue,
-    // net_value depende do detalhamento de comissão da Hotmart
-    // (data.commissions) — não estimado aqui para não exibir um valor
-    // incorreto no dashboard; fica null até validarmos o payload real.
-    net_value: null,
+    // Comissão líquida da usuária (data.commissions, source PRODUCER) —
+    // null quando o payload ainda não trouxe o split (ex. venda pendente).
+    net_value: netValue,
     currency,
     original_value: originalValueForRow,
     original_currency: originalCurrencyForRow,

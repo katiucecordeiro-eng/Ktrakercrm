@@ -29,7 +29,7 @@ export function RoasTrendChart({ data }: { data: RoasPoint[] }) {
     <Card>
       <CardHeader>
         <CardTitle>Evolução do ROAS por dia</CardTitle>
-        <CardDescription>Faturamento aprovado ÷ gasto sincronizado, por dia.</CardDescription>
+        <CardDescription>Faturamento líquido (sua comissão, sem taxa da Hotmart) ÷ gasto sincronizado, por dia.</CardDescription>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (

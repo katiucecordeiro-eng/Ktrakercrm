@@ -152,7 +152,7 @@ export function KpiCards({
       />
       <Kpi
         label="Faturamento líquido"
-        description="Faturamento bruto menos o valor de vendas reembolsadas/estornadas no período."
+        description="Sua comissão real das vendas aprovadas no período (já sem a taxa da Hotmart, calculada a partir do split de comissão de cada venda). Reembolsos não são descontados aqui — veja o card 'Vendas reembolsadas'."
         value={kpis.netRevenue}
         format="currency"
         currency={currency}
@@ -169,7 +169,7 @@ export function KpiCards({
       />
       <Kpi
         label="ROAS"
-        description={`Faturamento bruto ÷ gasto com anúncios. Borda pulsante quando ≥ ${roasTarget}x (meta configurável por oferta).`}
+        description={`Faturamento líquido (sua comissão real) ÷ gasto com anúncios. Borda pulsante quando ≥ ${roasTarget}x (meta configurável por oferta).`}
         value={kpis.roas}
         format="roas"
         currency={currency}
@@ -180,7 +180,7 @@ export function KpiCards({
       />
       <Kpi
         label="Lucro"
-        description="Faturamento líquido − gasto com anúncios − imposto da oferta (ponderado quando 'todas as ofertas' está selecionado)."
+        description="Faturamento líquido − gasto com anúncios − imposto da oferta (ponderado quando 'todas as ofertas' está selecionado). Não desconta reembolsos do período — veja o card 'Vendas reembolsadas'."
         value={kpis.profit}
         format="currency"
         currency={currency}
@@ -198,7 +198,7 @@ export function KpiCards({
       />
       <Kpi
         label="Margem de lucro"
-        description="Lucro ÷ faturamento bruto, em %."
+        description="Lucro ÷ faturamento líquido (sua comissão real), em %."
         value={kpis.marginPct}
         format="percent"
         currency={currency}
@@ -232,13 +232,23 @@ export function KpiCards({
       />
       <Kpi
         label="Vendas reembolsadas"
-        description="Quantidade e valor bruto de vendas reembolsadas ou com chargeback no período."
+        description="Quantidade e valor da sua comissão (não o bruto) em vendas reembolsadas ou com chargeback no período."
         value={kpis.refundedCount}
         format="number"
         currency={currency}
         deltaPct={deltas.refundedCount}
         deltaInvert
         suffix={<span className="text-muted-foreground"> · {formatCurrency(kpis.refundedValue, currency)}</span>}
+      />
+      <Kpi
+        label="Vendas pendentes"
+        description="Quantidade e valor bruto de vendas com pagamento ainda não confirmado (ex. boleto não pago) no período — nunca contam como aprovadas em nenhum outro card."
+        value={kpis.pendingCount}
+        format="number"
+        currency={currency}
+        deltaPct={deltas.pendingCount}
+        deltaNeutral
+        suffix={<span className="text-muted-foreground"> · {formatCurrency(kpis.pendingValue, currency)}</span>}
       />
       <Kpi
         label="Checkouts iniciados"

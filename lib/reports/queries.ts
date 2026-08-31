@@ -38,6 +38,13 @@ type DailyMetricsRow = {
   impressions: number;
   initiated_count: number;
   meta_checkouts: number;
+  // Comissão líquida (sales.net_value, soma das entradas PRODUCER de
+  // data.commissions — sem a taxa da Hotmart) e vendas pendentes, ambas
+  // migration 0018.
+  net_commission: number;
+  refunded_net_commission: number;
+  pending_value: number;
+  pending_count: number;
 };
 
 async function fetchDailyMetrics(
@@ -64,6 +71,10 @@ async function fetchDailyMetrics(
     impressions: Number(row.impressions),
     initiated_count: Number(row.initiated_count),
     meta_checkouts: Number(row.meta_checkouts),
+    net_commission: Number(row.net_commission),
+    refunded_net_commission: Number(row.refunded_net_commission),
+    pending_value: Number(row.pending_value),
+    pending_count: Number(row.pending_count),
   }));
 }
 
@@ -107,44 +118,59 @@ export async function getKpis(
   const taxRateByOffer = new Map(offers.map((o) => [o.id, o.tax_rate]));
 
   let grossRevenue = 0;
-  let refundedValue = 0;
+  let netCommission = 0;
+  let refundedNetCommission = 0;
   let refundedCount = 0;
   let salesCount = 0;
   let adSpend = 0;
   let taxTotal = 0;
+  let pendingValue = 0;
+  let pendingCount = 0;
 
   for (const row of dailyRows) {
     grossRevenue += row.gross_revenue;
-    refundedValue += row.refunded_value;
+    netCommission += row.net_commission;
+    refundedNetCommission += row.refunded_net_commission;
     refundedCount += row.refunded_count;
     salesCount += row.sales_count;
     adSpend += row.ad_spend;
+    pendingValue += row.pending_value;
+    pendingCount += row.pending_count;
     const taxRate = taxRateByOffer.get(row.offer_id) ?? 0;
-    taxTotal += (row.gross_revenue * taxRate) / 100;
+    taxTotal += (row.net_commission * taxRate) / 100;
   }
 
   const initiatedCheckouts = funnelRows.reduce((sum, row) => sum + row.initiate_checkout, 0);
 
-  // net_value da venda ainda não é calculado (Sprint 3) — "líquido" aqui é
-  // uma aproximação (bruto − reembolsos), sem descontar taxa da Hotmart.
-  const netRevenue = grossRevenue - refundedValue;
+  // "Líquido" = comissão que a usuária de fato recebe (sales.net_value,
+  // soma das entradas PRODUCER de data.commissions — já sem a taxa da
+  // Hotmart) das vendas APROVADAS no período. Reembolso é uma métrica à
+  // parte ("Vendas reembolsadas"), não é descontado daqui — conferido
+  // contra a mesma convenção de outra ferramenta do mercado (Utmify):
+  // faturamento líquido, ROAS e margem não subtraem reembolso, só o card
+  // de reembolso mostra esse valor separadamente.
+  const netRevenue = netCommission;
   const profit = netRevenue - adSpend - taxTotal;
 
   return {
     grossRevenue,
     netRevenue,
     adSpend,
-    roas: adSpend > 0 ? grossRevenue / adSpend : null,
+    roas: adSpend > 0 ? netRevenue / adSpend : null,
     profit,
     cpa: salesCount > 0 ? adSpend / salesCount : null,
-    marginPct: grossRevenue > 0 ? (profit / grossRevenue) * 100 : null,
+    marginPct: netRevenue > 0 ? (profit / netRevenue) * 100 : null,
     averageTicket: salesCount > 0 ? grossRevenue / salesCount : 0,
     salesCount,
     refundRatePct: salesCount + refundedCount > 0 ? (refundedCount / (salesCount + refundedCount)) * 100 : null,
     refundedCount,
-    refundedValue,
+    // Valor da comissão (não o bruto) que voltou por reembolso/chargeback —
+    // mesma convenção do faturamento líquido acima.
+    refundedValue: refundedNetCommission,
     initiatedCheckouts,
     costPerCheckout: initiatedCheckouts > 0 ? adSpend / initiatedCheckouts : null,
+    pendingValue,
+    pendingCount,
   };
 }
 
@@ -237,7 +263,7 @@ async function getHourlyRevenue(
   const query = applyOfferFilter(
     supabase
       .from("sales")
-      .select("gross_value, approved_at, offer_id")
+      .select("gross_value, net_value, approved_at, offer_id")
       .eq("status", "approved")
       .gte("approved_at", filters.since.toISOString())
       .lte("approved_at", filters.until.toISOString()),
@@ -246,9 +272,11 @@ async function getHourlyRevenue(
   const { data } = await query;
 
   const buckets = Array.from({ length: 24 }, (_, hour) => ({ hour, revenue: 0, count: 0 }));
-  for (const row of (data as { gross_value: number; approved_at: string }[] | null) ?? []) {
+  for (const row of (data as { gross_value: number; net_value: number | null; approved_at: string }[] | null) ?? []) {
     const hour = hourInTimezone(row.approved_at, timezone);
-    buckets[hour]!.revenue += Number(row.gross_value ?? 0);
+    // Comissão líquida (sem taxa da Hotmart), com fallback pro bruto quando
+    // ainda não capturada — mesma convenção do daily_metrics.
+    buckets[hour]!.revenue += Number(row.net_value ?? row.gross_value ?? 0);
     buckets[hour]!.count += 1;
   }
   return buckets;
@@ -279,14 +307,16 @@ export async function getTimeSeries(
   }
 
   const dailyRows = await fetchDailyMetrics(supabase, filters);
-  const buckets = new Map<string, { revenue: number; adSpend: number; refunded: number }>();
+  const buckets = new Map<string, { revenue: number; adSpend: number }>();
 
   for (const row of dailyRows) {
     const key = bucketKey(row.date, granularity);
-    const existing = buckets.get(key) ?? { revenue: 0, adSpend: 0, refunded: 0 };
-    existing.revenue += row.gross_revenue;
+    const existing = buckets.get(key) ?? { revenue: 0, adSpend: 0 };
+    // Comissão líquida (sem taxa da Hotmart) — mesma base do KPI
+    // "Faturamento líquido" (não desconta reembolso, que é uma métrica à
+    // parte — ver getKpis), pro gráfico e os cards baterem entre si.
+    existing.revenue += row.net_commission;
     existing.adSpend += row.ad_spend;
-    existing.refunded += row.refunded_value;
     buckets.set(key, existing);
   }
 
@@ -299,7 +329,7 @@ export async function getTimeSeries(
       adSpend: value.adSpend,
       // Lucro aqui não desconta imposto (varia por oferta) — ver KPI
       // "Lucro" para o valor com imposto considerado.
-      profit: value.revenue - value.refunded - value.adSpend,
+      profit: value.revenue - value.adSpend,
     }));
 }
 

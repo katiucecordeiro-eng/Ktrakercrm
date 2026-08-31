@@ -413,19 +413,22 @@ export async function getRoasTimeSeries(
   const query = applyOfferFilter(
     supabase
       .from("daily_metrics")
-      .select("date, ad_spend, gross_revenue")
+      .select("date, ad_spend, net_commission")
       .gte("date", isoDate(filters.since))
       .lte("date", isoDate(filters.until)),
     filters.offerId,
   );
   const { data } = await query;
-  const rows = (data as { date: string; ad_spend: number; gross_revenue: number }[] | null) ?? [];
+  const rows = (data as { date: string; ad_spend: number; net_commission: number }[] | null) ?? [];
 
   const buckets = new Map<string, { spend: number; revenue: number }>();
   for (const row of rows) {
     const existing = buckets.get(row.date) ?? { spend: 0, revenue: 0 };
     existing.spend += Number(row.ad_spend);
-    existing.revenue += Number(row.gross_revenue);
+    // Comissão líquida, não faturamento bruto — mesma base do ROAS na
+    // Visão Geral (getKpis), pra não mostrar dois ROAS diferentes pra
+    // mesma venda em páginas diferentes do dashboard.
+    existing.revenue += Number(row.net_commission);
     buckets.set(row.date, existing);
   }
 

@@ -33,6 +33,10 @@ export type KpiSummary = {
   refundedValue: number;
   initiatedCheckouts: number;
   costPerCheckout: number | null;
+  // Vendas com status "pending" (ex. boleto não pago ainda) — nunca
+  // contam como aprovadas em nenhum outro campo acima; card próprio.
+  pendingValue: number;
+  pendingCount: number;
 };
 
 export type FunnelStep = {
