@@ -1263,6 +1263,22 @@ período, mesma oferta) — os KPIs não batiam. Duas causas raiz distintas:
   fora da borda em vez de quebrar linha no grid de 2 colunas do celular.
   Corrigido com `min-w-0` no `Card` + `flex-wrap` na linha valor/delta +
   padding/fonte menores no mobile (`kpi-cards.tsx`).
+- **"Hoje" mostrando vendas que a Hotmart não confirmava, "ontem" faltando
+  vendas reais**: causa raiz era `daily_metrics`, `funnel_by_offer` e
+  `campaign_performance` (as 3 views SQL que o dashboard consulta)
+  agrupando por dia com `at time zone 'UTC'`, nunca atualizadas quando o
+  fix de fuso horário anterior (item acima, "Hoje"/"Ontem" adiantadas)
+  tornou `lib/reports/filters.ts` consciente do fuso da oferta — uma
+  venda aprovada às 21h/22h (horário de Brasília) vira 00h/01h UTC do dia
+  seguinte, então a view jogava essa venda pro dia seguinte enquanto o
+  filtro de período já pedia o dia anterior no fuso certo. Confirmado
+  comparando direto contra o gráfico da Hotmart (R$197,08 no dia 03/09,
+  não no 04/09) antes e depois do fix. Corrigido (migrations `0019`/
+  `0020`) juntando cada CTE dessas 3 views com `offers` e trocando
+  `at time zone 'UTC'` por `at time zone coalesce(o.timezone,
+  'America/Sao_Paulo')` no cálculo do `date` de agrupamento —
+  `ad_spend.date` não muda (já vem pronto da Meta Insights, sem
+  timestamp pra converter).
 
 ## Identidade visual
 
